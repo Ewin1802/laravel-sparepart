@@ -144,7 +144,12 @@ class ProductImportController extends Controller
                     $product->category_id = $categories[$categoryKey];
                     $product->price = $data['price'];
 
-                    foreach (['cost_price', 'base_unit', 'description', 'status', 'is_favorite'] as $field) {
+                    // dikenali lewat kode → nama di file dianggap nama terbaru
+                    if (($item['matched_by'] ?? null) === 'code') {
+                        $product->name = $data['name'];
+                    }
+
+                    foreach (['code', 'cost_price', 'base_unit', 'description', 'status', 'is_favorite'] as $field) {
                         if ($data[$field] !== null) {
                             $product->{$field} = $data[$field];
                         }
@@ -163,6 +168,7 @@ class ProductImportController extends Controller
 
                 // BARU
                 $product = new Product();
+                $product->code = $data['code'];
                 $product->name = $data['name'];
                 $product->category_id = $categories[$categoryKey];
                 $product->price = $data['price'];
@@ -265,12 +271,18 @@ class ProductImportController extends Controller
         $rows = SpreadsheetReader::read(Storage::disk('local')->path($path), $extension);
 
         // nama produk yang sudah ada → id (kalau ada nama kembar, yang paling lama dipakai)
+        // kode produk yang sudah ada → id (kode unik, jadi tidak mungkin kembar)
         $existing = [];
-        foreach (DB::table('products')->orderByDesc('id')->get(['id', 'name']) as $product) {
+        $existingCodes = [];
+        foreach (DB::table('products')->orderByDesc('id')->get(['id', 'name', 'code']) as $product) {
             $existing[mb_strtolower(trim(preg_replace('/\s+/u', ' ', $product->name)))] = $product->id;
+
+            if ($product->code !== null && trim($product->code) !== '') {
+                $existingCodes[mb_strtolower(trim(preg_replace('/\s+/u', ' ', $product->code)))] = $product->id;
+            }
         }
 
-        $result = ProductImport::analyze($rows, $existing);
+        $result = ProductImport::analyze($rows, $existing, $existingCodes);
 
         // kategori yang akan dibuat baru + yang namanya mirip kategori lama
         $result['categories'] = $result['ok']

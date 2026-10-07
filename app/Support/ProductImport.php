@@ -14,6 +14,7 @@ class ProductImport
 
     /** Judul kolom yang dikenali (huruf besar/kecil & spasi diabaikan) */
     private const HEADERS = [
+        'code' => ['kodeproduk', 'kode', 'kodebarang', 'kodepart', 'partnumber', 'partno', 'sku', 'code', 'productcode'],
         'name' => ['namaproduk', 'nama', 'produk', 'namabarang', 'barang', 'name', 'productname'],
         'category' => ['kategori', 'category', 'namakategori'],
         'price' => ['hargajual', 'harga', 'price', 'sellprice'],
@@ -26,6 +27,7 @@ class ProductImport
     ];
 
     public const LABELS = [
+        'code' => 'Kode Produk',
         'name' => 'Nama Produk',
         'category' => 'Kategori',
         'price' => 'Harga Jual',
@@ -42,9 +44,10 @@ class ProductImport
     /**
      * @param  array  $rows      hasil SpreadsheetReader::read()
      * @param  array  $existing  nama produk yang sudah ada: [ 'nama huruf kecil' => id ]
+     * @param  array  $existingCodes  kode produk yang sudah ada: [ 'kode huruf kecil' => id ]
      * @return array{ok: bool, error: ?string, columns: array, items: array, counts: array}
      */
-    public static function analyze(array $rows, array $existing): array
+    public static function analyze(array $rows, array $existing, array $existingCodes = []): array
     {
         $result = [
             'ok' => false,
@@ -83,6 +86,8 @@ class ProductImport
 
         // ---------- periksa tiap baris ----------
         $seen = [];
+        $seenCodes = [];
+        $seenIds = [];
 
         foreach ($rows as $i => $row) {
             if ($i <= $headerAt) {
@@ -96,6 +101,8 @@ class ProductImport
             $name = preg_replace('/\s+/u', ' ', $get('name'));
             $category = preg_replace('/\s+/u', ' ', $get('category'));
             $key = mb_strtolower($name);
+            $code = preg_replace('/\s+/u', ' ', $get('code'));
+            $codeKey = mb_strtolower($code);
 
             if ($name === '') {
                 $errors[] = 'Nama produk kosong.';
@@ -103,6 +110,14 @@ class ProductImport
                 $errors[] = 'Nama produk lebih dari 255 karakter.';
             } elseif (isset($seen[$key])) {
                 $errors[] = "Nama sama dengan baris {$seen[$key]} di file ini.";
+            }
+
+            if ($code !== '') {
+                if (mb_strlen($code) > 50) {
+                    $errors[] = 'Kode produk lebih dari 50 karakter.';
+                } elseif (isset($seenCodes[$codeKey])) {
+                    $errors[] = "Kode produk sama dengan baris {$seenCodes[$codeKey]} di file ini.";
+                }
             }
 
             if ($category === '') {
@@ -151,7 +166,30 @@ class ProductImport
                 $seen[$key] = $line;
             }
 
-            $existingId = $existing[$key] ?? null;
+            if ($code !== '' && ! isset($seenCodes[$codeKey])) {
+                $seenCodes[$codeKey] = $line;
+            }
+
+            // Produk lama dicari lewat KODE dulu; kalau kode kosong / belum dikenal, lewat NAMA.
+            $idByCode = $code !== '' ? ($existingCodes[$codeKey] ?? null) : null;
+            $idByName = $existing[$key] ?? null;
+
+            if ($idByCode && $idByName && $idByCode != $idByName) {
+                $errors[] = 'Kode "' . $code . '" dan nama ini milik dua produk yang berbeda di aplikasi.';
+            }
+
+            $existingId = $idByCode ?? $idByName;
+            $matchedBy = $idByCode ? 'code' : ($idByName ? 'name' : null);
+
+            // dua baris tidak boleh memperbarui produk yang sama
+            if (! $errors && $existingId) {
+                if (isset($seenIds[$existingId])) {
+                    $errors[] = "Produk yang sama sudah diisi di baris {$seenIds[$existingId]} file ini.";
+                } else {
+                    $seenIds[$existingId] = $line;
+                }
+            }
+
             $state = $errors ? 'error' : ($existingId ? 'update' : 'new');
             $result['counts'][$state]++;
 
@@ -160,9 +198,11 @@ class ProductImport
                 'state' => $state,
                 'errors' => $errors,
                 'product_id' => $existingId,
+                'matched_by' => $matchedBy, // 'code' · 'name' · null (produk baru)
                 // isi asli tiap kolom (apa adanya dari file) — dipakai untuk unduhan "baris bermasalah"
                 'raw' => array_map($get, array_combine(array_keys(self::LABELS), array_keys(self::LABELS))),
                 'data' => [
+                    'code' => $code !== '' ? $code : null,
                     'name' => $name,
                     'category' => $category,
                     'price' => is_float($price) ? round($price, 2) : null,

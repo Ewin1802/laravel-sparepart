@@ -86,6 +86,7 @@
                         </div>
 
                         <ul class="p-cols">
+                            <li><b>Kode Produk</b><small>Opsional, tidak boleh kembar</small></li>
                             <li><b>Nama Produk</b> <span class="req">wajib</span></li>
                             <li><b>Kategori</b> <span class="req">wajib</span><small>Dibuat otomatis kalau belum ada</small></li>
                             <li><b>Harga Jual</b> <span class="req">wajib</span></li>
@@ -98,7 +99,7 @@
                         </ul>
 
                         <p class="p-send-note is-off">
-                            Nama yang sudah ada di aplikasi akan <b>diperbarui</b>, bukan dibuat dobel.
+                            Kode atau nama yang sudah ada di aplikasi akan <b>diperbarui</b>, bukan dibuat dobel.
                         </p>
                     </section>
                 </aside>
@@ -116,7 +117,7 @@
                     <span class="p-stat-icon"><i data-lucide="refresh-cw"></i></span>
                     <span class="p-stat-label">Diperbarui</span>
                     <strong class="p-stat-value">{{ $counts['update'] }}</strong>
-                    <span class="p-stat-sub">Nama sudah ada di aplikasi</span>
+                    <span class="p-stat-sub">Kode atau nama sudah ada di aplikasi</span>
                 </div>
                 <div class="p-stat {{ $counts['error'] ? 'tone-red' : 'tone-gray' }}">
                     <span class="p-stat-icon"><i data-lucide="triangle-alert"></i></span>
@@ -252,6 +253,9 @@
 
                                     <td class="cell-main">
                                         <div class="p-name">{{ $d['name'] !== '' ? $d['name'] : '(tanpa nama)' }}</div>
+                                        @if (! empty($d['code']))
+                                            <small class="p-desc"><b>{{ $d['code'] }}</b></small>
+                                        @endif
                                         @if ($item['errors'])
                                             <ul class="p-row-errors">
                                                 @foreach ($item['errors'] as $error)
