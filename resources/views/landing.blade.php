@@ -12,30 +12,46 @@
     $topProductIds = $topProductIds ?? [];
     $range = $range ?? 30;
 
-    $storeName = $setting->store_name ?? 'Garasi Part';
+    $storeName = $setting->store_name ?? 'Toko Utama Caterpillar';
     $waNumber = $setting->whatsapp ?? null;
     $waLink = $waNumber
-        ? 'https://wa.me/' . $waNumber . '?text=' . urlencode('Halo ' . $storeName . ', saya mau tanya sparepart.')
+        ? 'https://wa.me/' .
+            $waNumber .
+            '?text=' .
+            urlencode('Halo ' . $storeName . ', saya mau tanya sparepart alat berat.')
         : null;
     $loginUrl = \Illuminate\Support\Facades\Route::has('login') ? route('login') : null;
 
     // Format angka stok desimal: 12.00 -> "12", 2.50 -> "2,5"
-    $fmtQty = fn ($n) => rtrim(rtrim(number_format((float) $n, 2, ',', '.'), '0'), ',');
+    $fmtQty = fn($n) => rtrim(rtrim(number_format((float) $n, 2, ',', '.'), '0'), ',');
 
     // Ikon otomatis berdasarkan nama kategori
     $iconFor = function ($name) {
         $n = strtolower($name ?? '');
+        // Urutan penting: yang lebih spesifik di atas (mis. "hidrolik" sebelum "oli")
         $map = [
-            'fa-gears' => ['mesin', 'engine', 'piston', 'gear'],
-            'fa-circle-stop' => ['rem', 'brake', 'kampas'],
-            'fa-car-battery' => ['aki', 'battery', 'kelistrikan', 'listrik', 'elektrik'],
-            'fa-oil-can' => ['oli', 'oil', 'pelumas'],
-            'fa-circle-notch' => ['ban', 'velg', 'tire', 'roda'],
+            'fa-filter' => ['filter', 'saringan', 'element'],
+            'fa-gauge-high' => ['hidrolik', 'hydraulic', 'pompa', 'pump', 'silinder', 'cylinder', 'valve'],
+            'fa-link' => ['undercarriage', 'track', 'roller', 'idler', 'sprocket', 'shoe', 'rantai'],
+            'fa-trowel' => ['bucket', 'teeth', 'tooth', 'kuku', 'cutting', 'adapter', 'ripper', 'blade'],
+            'fa-circle-notch' => ['bearing', 'bushing', 'bos', 'pin'],
+            'fa-life-ring' => ['seal', 'o-ring', 'oring', 'packing'],
+            'fa-gears' => ['mesin', 'engine', 'piston', 'liner', 'gasket', 'gear', 'transmisi', 'final drive'],
+            'fa-fan' => ['turbo', 'radiator', 'pendingin', 'cooling', 'fan'],
+            'fa-wave-square' => ['selang', 'hose', 'fitting', 'pipa'],
+            'fa-oil-can' => ['oli', 'oil', 'pelumas', 'grease'],
             'fa-lightbulb' => ['lampu', 'light'],
-            'fa-filter' => ['filter', 'saringan'],
-            'fa-link' => ['rantai', 'gir', 'chain', 'transmisi', 'cvt', 'v-belt'],
-            'fa-car-side' => ['body', 'bodi', 'aksesoris', 'spion'],
-            'fa-arrows-up-down' => ['suspensi', 'shock', 'per'],
+            'fa-car-battery' => [
+                'aki',
+                'battery',
+                'kelistrikan',
+                'listrik',
+                'elektrik',
+                'starter',
+                'alternator',
+                'sensor',
+            ],
+            'fa-tractor' => ['kabin', 'cabin', 'kaca', 'body', 'bodi', 'aksesoris'],
         ];
         foreach ($map as $icon => $keys) {
             foreach ($keys as $k) {
@@ -55,9 +71,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0c0e11">
 
-    <title>{{ $setting->store_name ?? 'Garasi Part' }} — Sparepart Motor & Mobil</title>
+    <title>{{ $setting->store_name ?? 'Toko Utama Caterpillar' }} — Sparepart Alat Berat</title>
     <meta name="description"
-        content="{{ $setting->store_description ?? 'Sparepart motor dan mobil original & berkualitas, harga jujur, siap kirim dan bisa dipasang di bengkel kami.' }}">
+        content="{{ $setting->store_description ?? 'Sparepart alat berat untuk excavator, bulldozer, wheel loader, dan motor grader. Stok ready, harga jujur, siap kirim ke lokasi proyek.' }}">
 
     <link rel="icon" href="{{ $setting->logo ? $setting->logo_url : asset('images/logo-icon.png') }}">
 
@@ -99,7 +115,7 @@
                 </span>
                 <span class="brand-copy">
                     <strong>{{ $storeName }}</strong>
-                    <small>{{ $setting->store_tagline ?? 'Sparepart original, harga jujur' }}</small>
+                    <small>{{ $setting->store_tagline ?? 'Sparepart alat berat' }}</small>
                 </span>
             </a>
 
@@ -155,30 +171,31 @@
             style="background-image: url('{{ asset('images/hero-sparepart.jpg') }}');">
             <div class="container hero-inner">
                 <div class="hero-content">
-                    <span class="eyebrow"><span class="pulse"></span> Stok ready · Siap kirim hari ini</span>
+                    <span class="eyebrow"><span class="pulse"></span> Stok ready · Siap kirim ke lokasi proyek</span>
 
-                    <h1>{!! $setting->hero_title ?? 'Part yang <span class="hl">Tepat</span>, Mesin Tetap Hebat' !!}</h1>
+                    <h1>{!! $setting->hero_title ?? 'Part yang <span class="hl">Tepat</span>, Unit Tetap Kerja' !!}</h1>
 
                     <p class="hero-desc">
-                        {{ $setting->hero_subtitle ?? 'Sparepart motor & mobil original dan aftermarket berkualitas. Cari berdasarkan nama part, merek, atau tipe kendaraan — kami bantu pastikan cocok sebelum kamu beli.' }}
+                        {{ $setting->hero_subtitle ?? 'Sparepart alat berat untuk excavator, bulldozer, wheel loader, dan motor grader. Cari berdasarkan nama part, part number, atau model unit — kami bantu pastikan cocok sebelum Anda beli.' }}
                     </p>
 
                     <form class="hero-search" id="heroSearch" role="search">
                         <label>
                             <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="search" id="heroSearchInput" placeholder="Contoh: kampas rem Vario, busi NGK…"
-                                autocomplete="off" aria-label="Cari sparepart">
+                            <input type="search" id="heroSearchInput"
+                                placeholder="Contoh: filter oli, track roller, part number…" autocomplete="off"
+                                aria-label="Cari sparepart">
                         </label>
                         <button type="submit" class="btn btn-accent">Cari Part</button>
                     </form>
 
                     <div class="hero-tags">
                         <span>Populer:</span>
-                        <button type="button" data-quick="oli">Oli</button>
-                        <button type="button" data-quick="kampas rem">Kampas rem</button>
-                        <button type="button" data-quick="busi">Busi</button>
-                        <button type="button" data-quick="aki">Aki</button>
-                        <button type="button" data-quick="v-belt">V-belt</button>
+                        <button type="button" data-quick="filter">Filter</button>
+                        <button type="button" data-quick="seal">Seal kit</button>
+                        <button type="button" data-quick="bucket">Bucket teeth</button>
+                        <button type="button" data-quick="roller">Track roller</button>
+                        <button type="button" data-quick="bearing">Bearing</button>
                     </div>
                 </div>
 
@@ -186,48 +203,51 @@
                     <div class="spec-card">
                         <i class="fa-solid fa-gear spec-gear" aria-hidden="true"></i>
                         @if ($topProducts->isNotEmpty())
-                            <span class="spec-label"><i class="fa-solid fa-fire"></i> Terlaris {{ $range }} hari</span>
+                            <span class="spec-label"><i class="fa-solid fa-fire"></i> Terlaris {{ $range }}
+                                hari</span>
                             <h3>Paling banyak<br>dicari pelanggan</h3>
                             <p>Berdasarkan penjualan {{ $range }} hari terakhir.</p>
 
                             <div class="spec-rows">
                                 @foreach ($topProducts->take(3) as $i => $top)
                                     <div class="spec-row">
-                                        <span><i class="fa-solid fa-{{ $i + 1 }}"></i>{{ \Illuminate\Support\Str::limit($top->name, 30) }}</span>
+                                        <span><i
+                                                class="fa-solid fa-{{ $i + 1 }}"></i>{{ \Illuminate\Support\Str::limit($top->name, 30) }}</span>
                                         <strong>{{ $fmtQty($top->total_qty) }} terjual</strong>
                                     </div>
                                 @endforeach
                             </div>
                         @else
-                        <span class="spec-label"><i class="fa-solid fa-shield-halved"></i> Jaminan toko</span>
-                        <h3>Original atau<br>uang kembali</h3>
-                        <p>Setiap part dicek sebelum dikirim.</p>
+                            <span class="spec-label"><i class="fa-solid fa-shield-halved"></i> Jaminan toko</span>
+                            <h3>Original atau<br>uang kembali</h3>
+                            <p>Setiap part dicek sebelum dikirim.</p>
 
-                        <div class="spec-rows">
-                            <div class="spec-row">
-                                <span><i class="fa-solid fa-certificate"></i>Part original & bergaransi</span>
-                                <strong><i class="fa-solid fa-check"></i></strong>
+                            <div class="spec-rows">
+                                <div class="spec-row">
+                                    <span><i class="fa-solid fa-certificate"></i>Part original & bergaransi</span>
+                                    <strong><i class="fa-solid fa-check"></i></strong>
+                                </div>
+                                <div class="spec-row">
+                                    <span><i class="fa-solid fa-magnifying-glass-chart"></i>Cek kecocokan model
+                                        unit</span>
+                                    <strong><i class="fa-solid fa-check"></i></strong>
+                                </div>
+                                <div class="spec-row">
+                                    <span><i class="fa-solid fa-barcode"></i>Dicocokkan lewat part number</span>
+                                    <strong><i class="fa-solid fa-check"></i></strong>
+                                </div>
                             </div>
-                            <div class="spec-row">
-                                <span><i class="fa-solid fa-magnifying-glass-chart"></i>Cek kecocokan kendaraan</span>
-                                <strong><i class="fa-solid fa-check"></i></strong>
-                            </div>
-                            <div class="spec-row">
-                                <span><i class="fa-solid fa-screwdriver-wrench"></i>Bisa pasang di tempat</span>
-                                <strong><i class="fa-solid fa-check"></i></strong>
-                            </div>
-                        </div>
                         @endif
                     </div>
 
                     <div class="mini-cards">
                         <div class="mini-card">
                             <i class="fa-solid fa-truck-fast"></i>
-                            <div><strong>Kirim cepat</strong><small>Ke seluruh Indonesia</small></div>
+                            <div><strong>Kirim ke site</strong><small>Tambang, proyek, kebun</small></div>
                         </div>
                         <div class="mini-card">
                             <i class="fa-solid fa-tags"></i>
-                            <div><strong>Harga jujur</strong><small>Grosir & bengkel</small></div>
+                            <div><strong>Harga jujur</strong><small>Kontraktor & rental</small></div>
                         </div>
                     </div>
                 </div>
@@ -264,13 +284,15 @@
                         <span class="kicker">Kategori</span>
                         <h2>Cari part <em>sesuai kebutuhan</em></h2>
                     </div>
-                    <p>Dari mesin, kaki-kaki, sampai kelistrikan — pilih kategori untuk langsung melihat produknya.</p>
+                    <p>Dari engine, hidrolik, undercarriage, sampai kelistrikan — pilih kategori untuk langsung melihat
+                        produknya.</p>
                 </div>
 
                 <div class="category-grid">
                     @forelse ($categories as $category)
                         <a href="#products" class="category-card reveal" data-category-link="{{ $category->id }}">
-                            <span class="category-icon"><i class="fa-solid {{ $iconFor($category->name) }}"></i></span>
+                            <span class="category-icon"><i
+                                    class="fa-solid {{ $iconFor($category->name) }}"></i></span>
                             <div>
                                 <h3>{{ $category->name }}</h3>
                                 <div class="category-foot">
@@ -296,7 +318,7 @@
                     <div>
                         <span class="kicker">Katalog</span>
                         <h2>Semua <em>sparepart</em></h2>
-                        <p class="section-desc">Cek harga, stok, dan kecocokan kendaraan. Klik produk untuk detail
+                        <p class="section-desc">Cek harga, stok, dan kecocokan unit. Klik produk untuk detail
                             lengkap.</p>
                     </div>
                     <div class="product-total">
@@ -309,7 +331,7 @@
                     <label class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="search" id="productSearch"
-                            placeholder="Cari nama part, merek, kode part, atau tipe motor/mobil…" autocomplete="off">
+                            placeholder="Cari nama part, merek, part number, atau model unit…" autocomplete="off">
                         <button type="button" class="clear-search" id="clearSearch" aria-label="Hapus pencarian">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
@@ -330,7 +352,8 @@
                 <div class="filter-scroll">
                     <button type="button" class="chip active" data-category="all">Semua</button>
                     @foreach ($categories as $category)
-                        <button type="button" class="chip" data-category="{{ $category->id }}">{{ $category->name }}</button>
+                        <button type="button" class="chip"
+                            data-category="{{ $category->id }}">{{ $category->name }}</button>
                     @endforeach
                 </div>
 
@@ -355,7 +378,8 @@
 
                             <div class="product-image">
                                 @if ($product->image)
-                                    <img src="{{ asset($product->image) }}" alt="{{ $product->name }}" loading="lazy">
+                                    <img src="{{ asset($product->image) }}" alt="{{ $product->name }}"
+                                        loading="lazy">
                                 @else
                                     <div class="product-placeholder">
                                         <i class="fa-solid {{ $icon }}"></i>
@@ -391,8 +415,8 @@
                                         <small>Harga</small>
                                         <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
                                     </div>
-                                    <button type="button" class="detail-btn" aria-label="Detail {{ $product->name }}"
-                                        data-name="{{ $product->name }}"
+                                    <button type="button" class="detail-btn"
+                                        aria-label="Detail {{ $product->name }}" data-name="{{ $product->name }}"
                                         data-price="{{ number_format($product->price, 0, ',', '.') }}"
                                         data-category="{{ $product->category->name ?? 'Sparepart' }}"
                                         data-brand="{{ $brand ?: '-' }}" data-sku="{{ $sku ?: '-' }}"
@@ -433,7 +457,7 @@
         {{-- BRANDS --}}
         <div class="brands" aria-label="Merek yang tersedia">
             <div class="brands-track">
-                @php $brandList = ['Honda Genuine', 'Yamaha Genuine', 'Suzuki', 'Toyota', 'NGK', 'Denso', 'Federal', 'Aspira', 'Bosch', 'Shell', 'Motul', 'GS Astra']; @endphp
+                @php $brandList = ['Caterpillar', 'Komatsu', 'Hitachi', 'Kobelco', 'Volvo', 'Doosan', 'Sumitomo', 'Hyundai', 'Sany', 'Donaldson', 'Fleetguard', 'Berco']; @endphp
                 @foreach (array_merge($brandList, $brandList) as $b)
                     <span>{{ $b }}</span>
                 @endforeach
@@ -446,7 +470,7 @@
                 <div class="why-visual reveal">
                     <div class="why-photo">
                         {{-- Opsional: public/images/bengkel.jpg (foto toko/bengkel asli) --}}
-                        <span class="why-fallback"><i class="fa-solid fa-screwdriver-wrench"></i></span>
+                        <span class="why-fallback"><i class="fa-solid fa-tractor"></i></span>
                         <img src="{{ asset('images/bengkel.jpg') }}" alt="Toko {{ $storeName }}" loading="lazy"
                             onerror="this.remove()">
                     </div>
@@ -460,7 +484,7 @@
                     <span class="kicker">Kenapa kami</span>
                     <h2>Bukan sekadar <em>jual part.</em></h2>
                     <p>
-                        {{ $setting->store_description ?? 'Kami bantu kamu memilih part yang benar-benar cocok, menjelaskan bedanya original dan aftermarket, sampai memasangnya dengan rapi oleh mekanik berpengalaman.' }}
+                        {{ $setting->store_description ?? 'Kami bantu Anda memilih part yang benar-benar cocok dengan model dan serial number unit, serta menjelaskan pilihan genuine, OEM, dan aftermarket — supaya alat berat Anda cepat kembali bekerja.' }}
                     </p>
 
                     <div class="feature-grid">
@@ -472,16 +496,16 @@
                         <div class="feature">
                             <i class="fa-solid fa-magnifying-glass-chart"></i>
                             <strong>Cek kecocokan</strong>
-                            <small>Kirim tipe & tahun kendaraan, kami pastikan part-nya pas.</small>
+                            <small>Kirim model & serial number unit, kami pastikan part-nya pas.</small>
                         </div>
                         <div class="feature">
-                            <i class="fa-solid fa-screwdriver-wrench"></i>
-                            <strong>Jasa pasang</strong>
-                            <small>Mekanik siap memasang part langsung di bengkel kami.</small>
+                            <i class="fa-solid fa-layer-group"></i>
+                            <strong>Genuine, OEM, aftermarket</strong>
+                            <small>Pilihan part sesuai kebutuhan dan anggaran proyek.</small>
                         </div>
                         <div class="feature">
                             <i class="fa-solid fa-truck-fast"></i>
-                            <strong>Kirim cepat</strong>
+                            <strong>Kirim ke site</strong>
                             <small>Pesanan sebelum jam 14:00 dikirim di hari yang sama.</small>
                         </div>
                     </div>
@@ -495,8 +519,8 @@
                 <div class="cta-box reveal">
                     <div>
                         <span class="kicker">Belum ketemu part-nya?</span>
-                        <h2>Kirim foto part, <em>kami carikan.</em></h2>
-                        <p>Admin kami bantu cek kode part dan ketersediaan stok dalam hitungan menit.</p>
+                        <h2>Kirim foto part atau name plate, <em>kami carikan.</em></h2>
+                        <p>Admin kami bantu cek part number dan ketersediaan stok dalam hitungan menit.</p>
                     </div>
                     <div class="cta-actions">
                         @if ($waLink)
@@ -529,10 +553,11 @@
                     </span>
                     <span class="brand-copy">
                         <strong>{{ $storeName }}</strong>
-                        <small>{{ $setting->store_tagline ?? 'Sparepart original, harga jujur' }}</small>
+                        <small>{{ $setting->store_tagline ?? 'Sparepart alat berat' }}</small>
                     </span>
                 </a>
-                <p>{{ $setting->store_description ?? 'Toko sparepart motor & mobil dengan stok lengkap, harga jujur, dan layanan pemasangan.' }}</p>
+                <p>{{ $setting->store_description ?? 'Toko sparepart alat berat dengan stok lengkap, harga jujur, dan bantuan cek kecocokan part.' }}
+                </p>
             </div>
 
             <div class="footer-col">
@@ -566,7 +591,7 @@
 
         <div class="container footer-bottom">
             <span>© {{ date('Y') }} {{ $storeName }}. All rights reserved.</span>
-            <span>Part tepat, perjalanan aman.</span>
+            <span>Part tepat, unit tetap kerja.</span>
         </div>
     </footer>
 
@@ -589,19 +614,20 @@
             <div class="modal-info">
                 <span class="modal-cat" id="mCategory">Sparepart</span>
                 <h2 id="mName">Nama produk</h2>
-                <p class="modal-sku">Kode part: <span id="mSku">-</span></p>
+                <p class="modal-sku">Part number: <span id="mSku">-</span></p>
                 <div class="modal-price" id="mPrice">Rp 0</div>
 
                 <div class="spec-table">
                     <div><span>Merek</span><strong id="mBrand">-</strong></div>
-                    <div><span>Cocok untuk</span><strong id="mFit">-</strong></div>
+                    <div><span>Cocok untuk unit</span><strong id="mFit">-</strong></div>
                     <div><span>Stok</span><strong id="mStock">-</strong></div>
                 </div>
 
                 <p class="modal-desc" id="mDesc">-</p>
 
                 @if ($waNumber)
-                    <a href="#" target="_blank" rel="noopener" class="btn btn-accent modal-order" id="mOrder">
+                    <a href="#" target="_blank" rel="noopener" class="btn btn-accent modal-order"
+                        id="mOrder">
                         <i class="fa-brands fa-whatsapp"></i> Pesan / Tanya Stok
                     </a>
                 @else
@@ -779,8 +805,9 @@
                     const order = $('mOrder');
                     if (order && body.dataset.whatsapp) {
                         const msg =
-                            `Halo ${body.dataset.store}, saya mau pesan:\n• ${d.name}\n• Kode: ${d.sku}\nApakah stok masih ada?`;
-                        order.href = `https://wa.me/${body.dataset.whatsapp}?text=${encodeURIComponent(msg)}`;
+                            `Halo ${body.dataset.store}, saya mau pesan:\n• ${d.name}\n• Part number: ${d.sku}\nApakah stok masih ada?`;
+                        order.href =
+                            `https://wa.me/${body.dataset.whatsapp}?text=${encodeURIComponent(msg)}`;
                     }
 
                     modal.classList.add('show');
@@ -824,7 +851,8 @@
                     entries.forEach((en) => {
                         if (!en.isIntersecting) return;
                         navLinks.forEach((l) =>
-                            l.classList.toggle('active', l.getAttribute('href') === `#${en.target.id}`)
+                            l.classList.toggle('active', l.getAttribute('href') ===
+                                `#${en.target.id}`)
                         );
                     });
                 }, {

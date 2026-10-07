@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -19,7 +20,11 @@ class ProductController extends Controller
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->select('products.*', 'categories.name as category_name')
             ->when($request->name, function ($query, $name) {
-                $query->where('products.name', 'like', "%{$name}%");
+                // cari di nama ATAU kode produk
+                $query->where(function ($q) use ($name) {
+                    $q->where('products.name', 'like', "%{$name}%")
+                        ->orWhere('products.code', 'like', "%{$name}%");
+                });
             })
             ->orderByDesc('products.id')
             ->paginate(10)
@@ -46,6 +51,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'code'          => 'nullable|string|max:50|unique:products,code',
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
@@ -55,10 +61,13 @@ class ProductController extends Controller
             'is_favorite'   => 'required|boolean',
             'base_unit' => 'required|string|max:10',
             'image'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ], [
+            'code.unique'   => 'Kode produk sudah dipakai produk lain.',
         ]);
 
         $product = new Product();
 
+        $product->code = $request->code;
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
@@ -117,6 +126,7 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
+            'code'          => ['nullable', 'string', 'max:50', Rule::unique('products', 'code')->ignore($id)],
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
@@ -126,10 +136,13 @@ class ProductController extends Controller
             'is_favorite'   => 'required|boolean',
             'base_unit'     => 'required|string|max:10',
             'image'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ], [
+            'code.unique'   => 'Kode produk sudah dipakai produk lain.',
         ]);
 
         $product = Product::findOrFail($id);
 
+        $product->code = $request->code;
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;

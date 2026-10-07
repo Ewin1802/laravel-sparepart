@@ -61,6 +61,17 @@
                 </div>
 
                 <div class="p-field p-span-2">
+                    <label for="code">Kode Produk</label>
+                    <input type="text" id="code" name="code" value="{{ old('code', $p->code ?? '') }}"
+                        placeholder="Contoh: part number atau kode internal toko" maxlength="50"
+                        class="@error('code') is-invalid @enderror" autocomplete="off">
+                    <small class="p-hint">Opsional. Tidak boleh sama dengan produk lain.</small>
+                    @error('code')
+                        <small class="p-error">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="p-field p-span-2">
                     <label for="category_id">Kategori <span class="req">*</span></label>
                     <select id="category_id" name="category_id" required
                         class="@error('category_id') is-invalid @enderror">

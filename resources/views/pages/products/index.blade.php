@@ -43,7 +43,7 @@
                 <label class="p-search">
                     <i data-lucide="search"></i>
                     <input type="search" name="name" value="{{ $search }}"
-                        placeholder="Cari nama produk..." autocomplete="off"
+                        placeholder="Cari nama atau kode produk..." autocomplete="off"
                         aria-label="Cari produk">
                 </label>
 
@@ -99,7 +99,7 @@
                                                     </span>
                                                 @endif
                                             </div>
-                                            <small class="p-desc">{{ \Illuminate\Support\Str::limit($product->description, 70) }}</small>
+                                            <small class="p-desc">@if ($product->code)<b>{{ $product->code }}</b> · @endif{{ \Illuminate\Support\Str::limit($product->description, 70) }}</small>
                                         </div>
                                     </div>
                                 </td>
@@ -180,4 +180,3 @@
 
     </div>
 @endsection
-
