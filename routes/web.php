@@ -11,11 +11,14 @@ use App\Http\Controllers\MemberPortalController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
+use App\Http\Controllers\ProductLabelController;
+use App\Http\Controllers\ServerBillingController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StockInController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPriceReportController;
 use App\Http\Controllers\UserController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [LandingController::class, 'index'])
     ->name('landing');
+
 // Route::get('/daftar-member', [MemberRegisterController::class, 'create'])
 //     ->name('member.register');
 // Route::post('/daftar-member', [MemberRegisterController::class, 'store'])
@@ -45,18 +49,21 @@ Route::get('/', [LandingController::class, 'index'])
 
 Route::middleware('auth')->group(function () {
 
-// ROUTE "HOME" — nentuin redirect setelah login, tergantung role
-    Route::get('/home', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-
-        if ($user->role === 'admin') {
+    // HOME — arah setelah login, tergantung role
+    Route::get('/home', function (Request $request) {
+        if ($request->user()->role === 'admin') {
             return redirect()->route('dashboard');
         }
 
         return redirect()->route('member.portal');
     })->name('home');
 
-    // ROUTE INI DI LUAR role:admin, supaya member biasa bisa akses
+    /*
+    |--------------------------------------------------------------------------
+    | MEMBER PORTAL (di luar role:admin, supaya member biasa bisa akses)
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/kartu-member', [MemberPortalController::class, 'show'])
         ->name('member.portal');
 
@@ -66,15 +73,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/kartu-member/redeem', [MemberPortalController::class, 'redeem'])
         ->name('member.portal.redeem');
 
-
-
     /*
     |--------------------------------------------------------------------------
     | ADMIN ROUTES
     |--------------------------------------------------------------------------
     |
-    | Semua route di bawah ini hanya bisa diakses oleh user
-    | dengan role "admin", termasuk Dashboard.
+    | Semua route di bawah ini hanya untuk user dengan role "admin".
+    |
+    | ATURAN URUTAN: route khusus (products/import, products/labels,
+    | members/generate-code, dst.) selalu ditaruh SEBELUM Route::resource
+    | yang sama, supaya tidak tertangkap sebagai {id}.
     |
     */
 
@@ -109,9 +117,27 @@ Route::middleware('auth')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | PRODUCTS
+        | PRODUCTS — import Excel & cetak label barcode
         |--------------------------------------------------------------------------
         */
+
+        Route::get('products/import', [ProductImportController::class, 'create'])
+            ->name('products.import');
+
+        Route::post('products/import/preview', [ProductImportController::class, 'preview'])
+            ->name('products.import.preview');
+
+        Route::post('products/import', [ProductImportController::class, 'store'])
+            ->name('products.import.store');
+
+        Route::get('products/import/errors', [ProductImportController::class, 'errors'])
+            ->name('products.import.errors');
+
+        Route::get('products/labels', [ProductLabelController::class, 'index'])
+            ->name('products.labels');
+
+        Route::get('products/labels/print', [ProductLabelController::class, 'print'])
+            ->name('products.labels.print');
 
         Route::resource('products', ProductController::class)
             ->except(['show']);
@@ -127,21 +153,30 @@ Route::middleware('auth')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
+        | STOK & PEMBELIAN
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource('suppliers', SupplierController::class)
+            ->except(['show']);
+
+        // tandai nota tempo sudah lunas
+        Route::post('stock-ins/{id}/pay', [StockInController::class, 'pay'])
+            ->name('stock-ins.pay');
+
+        Route::resource('stock-ins', StockInController::class);
+
+        Route::get('reports/supplier-prices', SupplierPriceReportController::class)
+            ->name('reports.supplier-prices');
+
+        /*
+        |--------------------------------------------------------------------------
         | EXPENSES
         |--------------------------------------------------------------------------
         */
 
         Route::resource('expenses', ExpenseController::class)
             ->except(['show']);
-
-        Route::resource('suppliers', SupplierController::class)->except('show');
-        Route::post('stock-ins/{id}/pay', [StockInController::class, 'pay'])->name('stock-ins.pay');
-        Route::resource('stock-ins', StockInController::class);
-        Route::get('reports/supplier-prices', SupplierPriceReportController::class)->name('reports.supplier-prices');
-        Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
-        Route::post('products/import/preview', [ProductImportController::class, 'preview'])->name('products.import.preview');
-        Route::post('products/import', [ProductImportController::class, 'store'])->name('products.import.store');
-        Route::get('products/import/errors', [ProductImportController::class, 'errors'])->name('products.import.errors');
 
         /*
         |--------------------------------------------------------------------------
@@ -156,43 +191,54 @@ Route::middleware('auth')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
-        | ORDER REPORT
+        | ORDERS (TRANSAKSI)
         |--------------------------------------------------------------------------
         |
-        | GET /orders
-        | Menampilkan daftar transaksi
+        | GET    /orders            daftar transaksi
+        | GET    /orders/summary    ringkasan transaksi
+        | GET    /orders/{id}       detail (dipakai modal detail transaksi)
+        | GET    /orders/{id}/edit  form koreksi
+        | PUT    /orders/{id}       simpan koreksi
+        | DELETE /orders/{id}       hapus transaksi
         |
         */
 
         Route::get('/orders', [OrderController::class, 'index'])
             ->name('orders.index');
 
-        /*
-        |--------------------------------------------------------------------------
-        | ORDER SUMMARY
-        |--------------------------------------------------------------------------
-        |
-        | GET /orders/summary
-        | Digunakan untuk mengambil ringkasan transaksi
-        |
-        */
-
         Route::get('/orders/summary', [OrderController::class, 'summary'])
             ->name('orders.summary');
-
-        /*
-        |--------------------------------------------------------------------------
-        | ORDER DETAIL
-        |--------------------------------------------------------------------------
-        |
-        | GET /orders/{id}
-        | Digunakan oleh modal detail transaksi
-        |
-        */
 
         Route::get('/orders/{id}', [OrderController::class, 'show'])
             ->whereNumber('id')
             ->name('orders.show');
+
+        Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])
+            ->whereNumber('id')
+            ->name('orders.edit');
+
+        Route::put('/orders/{id}', [OrderController::class, 'update'])
+            ->whereNumber('id')
+            ->name('orders.update');
+
+        Route::delete('/orders/{id}', [OrderController::class, 'destroy'])
+            ->whereNumber('id')
+            ->name('orders.destroy');
+
+        /*
+        |--------------------------------------------------------------------------
+        | ANNOUNCEMENTS (INFORMASI MEMBER)
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource('announcements', AnnouncementController::class)
+            ->except(['show']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SETTINGS
+        |--------------------------------------------------------------------------
+        */
 
         Route::get('settings', [SettingController::class, 'edit'])
             ->name('settings.edit');
@@ -200,28 +246,8 @@ Route::middleware('auth')->group(function () {
         Route::put('settings', [SettingController::class, 'update'])
             ->name('settings.update');
 
-        Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])
-            ->name('orders.edit');
-
-        Route::put('/orders/{id}', [OrderController::class, 'update'])
-            ->name('orders.update');
-
-            /*
-            |--------------------------------------------------------------------------
-            | ANNOUNCEMENTS (INFORMASI MEMBER)
-            |--------------------------------------------------------------------------
-            */
-
-        Route::resource('announcements', AnnouncementController::class)
-            ->except(['show']);
-        Route::delete('/orders/{id}', [OrderController::class, 'destroy'])
-            ->whereNumber('id')
-            ->name('orders.destroy');
-
-        // Digunakan oleh modal detail transaksi
-        Route::get('/orders/{id}', [OrderController::class, 'show'])
-            ->whereNumber('id')
-            ->name('orders.show');
+        // tagihan server: "Sudah dibayar" → jatuh tempo maju satu siklus
+        Route::post('settings/server-paid', [ServerBillingController::class, 'paid'])
+            ->name('settings.server-paid');
     });
-
 });
