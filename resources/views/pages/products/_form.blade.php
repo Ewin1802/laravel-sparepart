@@ -15,13 +15,15 @@
         'METER' => 'METER — kabel, selang',
     ];
     $currentUnit = old('base_unit', $p->base_unit ?? 'PCS');
-    if ($currentUnit && !array_key_exists($currentUnit, $units)) {
+    if ($currentUnit && ! array_key_exists($currentUnit, $units)) {
         $units = [$currentUnit => $currentUnit] + $units;
     }
 
     $stockValue = old('stock', $p ? rtrim(rtrim(number_format((float) $p->stock, 2, '.', ''), '0'), '.') : 0);
     $statusOn = (bool) old('status', $p->status ?? 1);
     $favoriteOn = (bool) old('is_favorite', $p->is_favorite ?? 0);
+    $barcodeValue = old('barcode', $p->barcode ?? '');
+    $isStoreCode = \App\Support\Barcode::isInternal($p->barcode ?? null);
 @endphp
 
 @if ($errors->any())
@@ -60,13 +62,26 @@
                     @enderror
                 </div>
 
-                <div class="p-field p-span-2">
-                    <label for="code">Kode Produk</label>
+                <div class="p-field">
+                    <label for="code">Kode Part</label>
                     <input type="text" id="code" name="code" value="{{ old('code', $p->code ?? '') }}"
-                        placeholder="Contoh: part number atau kode internal toko" maxlength="50"
-                        class="@error('code') is-invalid @enderror" autocomplete="off">
-                    <small class="p-hint">Opsional. Tidak boleh sama dengan produk lain.</small>
+                        placeholder="Contoh: 1R-0739" maxlength="50" autocomplete="off" data-scan-field
+                        class="p-mono @error('code') is-invalid @enderror">
+                    <small class="p-hint">Nomor part dari pabrikan. Opsional.</small>
                     @error('code')
+                        <small class="p-error">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="p-field">
+                    <label for="barcode">Barcode</label>
+                    <input type="text" id="barcode" name="barcode" value="{{ $barcodeValue }}"
+                        placeholder="Scan barcode di kemasan" maxlength="64" autocomplete="off" data-scan-field
+                        class="p-mono @error('barcode') is-invalid @enderror">
+                    <small class="p-hint">
+                        Klik kolom ini lalu scan. Kosongkan jika kemasan tidak berbarcode — kode toko dibuat otomatis.
+                    </small>
+                    @error('barcode')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
                 </div>
@@ -89,10 +104,10 @@
 
                 <div class="p-field p-span-2">
                     <label for="description">Deskripsi <span class="req">*</span></label>
-                    <textarea id="description" name="description" rows="5" required class="@error('description') is-invalid @enderror"
+                    <textarea id="description" name="description" rows="5" required
+                        class="@error('description') is-invalid @enderror"
                         placeholder="Merek, kode part, dan cocok untuk kendaraan apa. Contoh: Merek AHM, kode 06455-KVB-901, cocok untuk Beat, Vario 125, Scoopy.">{{ old('description', $p->description ?? '') }}</textarea>
-                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di
-                        website.</small>
+                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di website.</small>
                     @error('description')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
@@ -130,8 +145,8 @@
 
                 <div class="p-field">
                     <label for="stock">{{ $isEdit ? 'Stok' : 'Stok Awal' }} <span class="req">*</span></label>
-                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0"
-                        step="any" inputmode="decimal" required class="@error('stock') is-invalid @enderror">
+                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0" step="any"
+                        inputmode="decimal" required class="@error('stock') is-invalid @enderror">
                     @error('stock')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
@@ -141,8 +156,7 @@
                     <label for="base_unit">Satuan <span class="req">*</span></label>
                     <select id="base_unit" name="base_unit" required class="@error('base_unit') is-invalid @enderror">
                         @foreach ($units as $value => $label)
-                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}
-                            </option>
+                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('base_unit')
@@ -189,6 +203,31 @@
                 <small class="p-error">{{ $message }}</small>
             @enderror
         </section>
+
+        {{-- BARCODE (hanya saat edit) --}}
+        @if ($isEdit && $p->barcode)
+            <section class="p-card p-section">
+                <div class="p-section-head">
+                    <span class="p-section-icon"><i data-lucide="barcode"></i></span>
+                    <div>
+                        <h3>Barcode</h3>
+                        <p>{{ $isStoreCode ? 'Kode toko (dibuat otomatis).' : 'Barcode dari kemasan.' }}</p>
+                    </div>
+                </div>
+
+                <div class="p-barcode-preview">
+                    {!! \App\Support\Barcode::svg($p->barcode, 30) !!}
+                    <span>{{ $p->barcode }}</span>
+                </div>
+
+                @if (Route::has('products.labels'))
+                    <a href="{{ route('products.labels', ['qty' => [$p->id => 1]]) }}" class="p-btn p-btn-ghost p-btn-block">
+                        <i data-lucide="printer"></i>
+                        Cetak Label
+                    </a>
+                @endif
+            </section>
+        @endif
 
         {{-- PENGATURAN --}}
         <section class="p-card p-section">
@@ -238,3 +277,25 @@
         {{ $isEdit ? 'Simpan Perubahan' : 'Simpan Produk' }}
     </button>
 </div>
+
+
+<style>
+    .crud-page .p-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .3px; }
+    .crud-page .p-barcode-preview { display: grid; justify-items: center; gap: 6px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--pb, #e5e7eb); border-radius: 12px; background: #fff; }
+    .crud-page .p-barcode-preview svg { width: 100%; max-width: 260px; height: 64px; }
+    .crud-page .p-barcode-preview span { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; letter-spacing: 1px; }
+    .crud-page .p-btn-block { width: 100%; justify-content: center; }
+</style>
+
+<script>
+    // Scanner USB/Bluetooth mengetik kode lalu menekan Enter. Di kolom kode &
+    // barcode, Enter hanya pindah ke kolom berikutnya — form tidak terkirim.
+    document.querySelectorAll('[data-scan-field]').forEach((input) => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const fields = [...input.form.querySelectorAll('input:not([type=hidden]), select, textarea')];
+            fields[fields.indexOf(input) + 1]?.focus();
+        });
+    });
+</script>

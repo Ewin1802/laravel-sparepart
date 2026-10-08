@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\Barcode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -19,11 +20,12 @@ class ProductController extends Controller
         $products = DB::table('products')
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->select('products.*', 'categories.name as category_name')
+            // cari nama, kode part, atau barcode (scan langsung ke kolom cari juga bisa)
             ->when($request->name, function ($query, $name) {
-                // cari di nama ATAU kode produk
                 $query->where(function ($q) use ($name) {
                     $q->where('products.name', 'like', "%{$name}%")
-                        ->orWhere('products.code', 'like', "%{$name}%");
+                        ->orWhere('products.code', 'like', "%{$name}%")
+                        ->orWhere('products.barcode', trim($name));
                 });
             })
             ->orderByDesc('products.id')
@@ -51,7 +53,6 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'code'          => 'nullable|string|max:50|unique:products,code',
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
@@ -61,13 +62,11 @@ class ProductController extends Controller
             'is_favorite'   => 'required|boolean',
             'base_unit' => 'required|string|max:10',
             'image'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], [
-            'code.unique'   => 'Kode produk sudah dipakai produk lain.',
-        ]);
+            ...$this->codeRules(),
+        ], $this->codeMessages());
 
         $product = new Product();
 
-        $product->code = $request->code;
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
@@ -76,6 +75,9 @@ class ProductController extends Controller
         $product->status = $request->status;
         $product->is_favorite = $request->is_favorite;
         $product->base_unit = $request->base_unit;
+        $product->code = Barcode::normalize($request->code);
+        // kosong → kode toko dibuat otomatis setelah tersimpan (trait HasBarcode)
+        $product->barcode = Barcode::normalize($request->barcode);
 
         // simpan dulu agar mendapatkan ID
         $product->save();
@@ -126,7 +128,6 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'code'          => ['nullable', 'string', 'max:50', Rule::unique('products', 'code')->ignore($id)],
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
@@ -136,13 +137,11 @@ class ProductController extends Controller
             'is_favorite'   => 'required|boolean',
             'base_unit'     => 'required|string|max:10',
             'image'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], [
-            'code.unique'   => 'Kode produk sudah dipakai produk lain.',
-        ]);
+            ...$this->codeRules($id),
+        ], $this->codeMessages());
 
         $product = Product::findOrFail($id);
 
-        $product->code = $request->code;
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
@@ -151,6 +150,9 @@ class ProductController extends Controller
         $product->status = $request->status;
         $product->base_unit = $request->base_unit;
         $product->is_favorite = $request->is_favorite;
+        $product->code = Barcode::normalize($request->code);
+        // dikosongkan → kembali ke kode toko (trait HasBarcode)
+        $product->barcode = Barcode::normalize($request->barcode);
 
         if ($request->hasFile('image')) {
 
@@ -185,6 +187,34 @@ class ProductController extends Controller
         return redirect()
             ->route('products.index')
             ->with('success', 'Produk berhasil diperbarui.');
+    }
+
+    /**
+     * Aturan kode part & barcode (dipakai store dan update).
+     */
+    private function codeRules($ignoreId = null): array
+    {
+        return [
+            'code' => [
+                'nullable', 'string', 'max:50',
+                Rule::unique('products', 'code')->ignore($ignoreId),
+            ],
+            'barcode' => [
+                'nullable', 'string', 'max:64',
+                // hanya huruf/angka/tanda baca biasa — sama dengan yang bisa dicetak Code 128
+                'regex:/^[\x20-\x7E]+$/',
+                Rule::unique('products', 'barcode')->ignore($ignoreId),
+            ],
+        ];
+    }
+
+    private function codeMessages(): array
+    {
+        return [
+            'code.unique' => 'Kode part ini sudah dipakai produk lain.',
+            'barcode.unique' => 'Barcode ini sudah dipakai produk lain.',
+            'barcode.regex' => 'Barcode hanya boleh berisi huruf, angka, dan tanda baca biasa.',
+        ];
     }
 
     /**

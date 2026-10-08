@@ -22,6 +22,13 @@
             </div>
 
             <div class="p-header-actions">
+                @if (Route::has('products.labels'))
+                    <a href="{{ route('products.labels') }}" class="p-btn p-btn-ghost">
+                        <i data-lucide="barcode"></i>
+                        Cetak Label
+                    </a>
+                @endif
+
                 @if (Route::has('products.import'))
                     <a href="{{ route('products.import') }}" class="p-btn p-btn-ghost">
                         <i data-lucide="file-spreadsheet"></i>
@@ -43,7 +50,7 @@
                 <label class="p-search">
                     <i data-lucide="search"></i>
                     <input type="search" name="name" value="{{ $search }}"
-                        placeholder="Cari nama atau kode produk..." autocomplete="off"
+                        placeholder="Cari nama, kode part, atau scan barcode..." autocomplete="off"
                         aria-label="Cari produk">
                 </label>
 
@@ -99,7 +106,17 @@
                                                     </span>
                                                 @endif
                                             </div>
-                                            <small class="p-desc">@if ($product->code)<b>{{ $product->code }}</b> · @endif{{ \Illuminate\Support\Str::limit($product->description, 70) }}</small>
+                                            @if ($product->code || $product->barcode)
+                                                <small class="p-codes">
+                                                    @if ($product->code)
+                                                        <span title="Kode part">{{ $product->code }}</span>
+                                                    @endif
+                                                    @if ($product->barcode)
+                                                        <span title="Barcode"><i data-lucide="barcode"></i>{{ $product->barcode }}</span>
+                                                    @endif
+                                                </small>
+                                            @endif
+                                            <small class="p-desc">{{ \Illuminate\Support\Str::limit($product->description, 70) }}</small>
                                         </div>
                                     </div>
                                 </td>
@@ -126,6 +143,14 @@
 
                                 <td class="cell-actions">
                                     <div class="p-actions">
+                                        @if (Route::has('products.labels'))
+                                            <a href="{{ route('products.labels', ['qty' => [$product->id => 1]]) }}"
+                                                class="p-icon-btn" title="Cetak label"
+                                                aria-label="Cetak label {{ $product->name }}">
+                                                <i data-lucide="barcode"></i>
+                                            </a>
+                                        @endif
+
                                         <a href="{{ route('products.edit', $product->id) }}" class="p-icon-btn"
                                             title="Edit" aria-label="Edit {{ $product->name }}">
                                             <i data-lucide="pencil"></i>
@@ -179,4 +204,11 @@
         </div>
 
     </div>
+
+    <style>
+        .crud-page .p-codes { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 2px 0; color: var(--pm, #667080); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
+        .crud-page .p-codes span { display: inline-flex; align-items: center; gap: 3px; }
+        .crud-page .p-codes svg { width: 12px; height: 12px; }
+    </style>
 @endsection
+

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('category_id')->constrained('categories');
             $table->string('code', 50)->nullable()->unique();
+            $table->string('barcode', 64)->nullable()->unique();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('image')->nullable();
@@ -23,7 +24,6 @@ return new class extends Migration
             $table->decimal('stock', 10, 2);
             $table->string('base_unit')->default('PCS');
             $table->boolean('status')->default(1);
-            //is_favorite
             $table->boolean('is_favorite')->default(0);
             $table->timestamps();
         });
