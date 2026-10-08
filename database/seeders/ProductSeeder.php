@@ -188,5 +188,11 @@ class ProductSeeder extends Seeder
                 ]
             );
         }
+                // DatabaseSeeder memakai WithoutModelEvents, jadi barcode otomatis
+        // dari model tidak berjalan saat seeding — diisi langsung di sini.
+        Product::whereNull('barcode')->each(function (Product $product) {
+            $product->barcode = \App\Support\Barcode::internal($product->id);
+            $product->saveQuietly();
+        });
     }
 }

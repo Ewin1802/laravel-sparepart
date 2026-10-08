@@ -25,12 +25,13 @@ class Product extends Model
         'base_unit',
     ];
 
-    /**
+        /**
      * Produk tanpa barcode otomatis mendapat kode toko EAN-13 berawalan "20".
      * Berlaku dari form, import Excel, seeder, maupun API.
      */
     protected static function booted(): void
     {
+        // produk baru: id baru ada setelah tersimpan
         static::created(function (Product $product) {
             if (blank($product->barcode)) {
                 $product->barcode = Barcode::internal($product->id);
@@ -38,9 +39,9 @@ class Product extends Model
             }
         });
 
-        // barcode dikosongkan saat edit → kembali ke kode toko
-        static::updating(function (Product $product) {
-            if ($product->isDirty('barcode') && blank($product->barcode)) {
+        // produk lama yang disimpan dengan barcode kosong → isi kode toko
+        static::saving(function (Product $product) {
+            if ($product->exists && blank($product->barcode)) {
                 $product->barcode = Barcode::internal($product->id);
             }
         });
