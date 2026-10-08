@@ -15,6 +15,7 @@ class ProductImport
     /** Judul kolom yang dikenali (huruf besar/kecil & spasi diabaikan) */
     private const HEADERS = [
         'code' => ['kodeproduk', 'kode', 'kodebarang', 'kodepart', 'partnumber', 'partno', 'sku', 'code', 'productcode'],
+        'barcode' => ['barcode', 'barkode', 'kodebarcode', 'barcodekemasan', 'ean', 'ean13', 'upc', 'gtin'],
         'name' => ['namaproduk', 'nama', 'produk', 'namabarang', 'barang', 'name', 'productname'],
         'category' => ['kategori', 'category', 'namakategori'],
         'price' => ['hargajual', 'harga', 'price', 'sellprice'],
@@ -28,6 +29,7 @@ class ProductImport
 
     public const LABELS = [
         'code' => 'Kode Produk',
+        'barcode' => 'Barcode',
         'name' => 'Nama Produk',
         'category' => 'Kategori',
         'price' => 'Harga Jual',
@@ -45,9 +47,10 @@ class ProductImport
      * @param  array  $rows      hasil SpreadsheetReader::read()
      * @param  array  $existing  nama produk yang sudah ada: [ 'nama huruf kecil' => id ]
      * @param  array  $existingCodes  kode produk yang sudah ada: [ 'kode huruf kecil' => id ]
+     * @param  array  $existingBarcodes  barcode yang sudah ada: [ 'barcode' => id ] (persis, beda huruf = beda)
      * @return array{ok: bool, error: ?string, columns: array, items: array, counts: array}
      */
-    public static function analyze(array $rows, array $existing, array $existingCodes = []): array
+    public static function analyze(array $rows, array $existing, array $existingCodes = [], array $existingBarcodes = []): array
     {
         $result = [
             'ok' => false,
@@ -87,6 +90,7 @@ class ProductImport
         // ---------- periksa tiap baris ----------
         $seen = [];
         $seenCodes = [];
+        $seenBarcodes = [];
         $seenIds = [];
 
         foreach ($rows as $i => $row) {
@@ -101,8 +105,10 @@ class ProductImport
             $name = preg_replace('/\s+/u', ' ', $get('name'));
             $category = preg_replace('/\s+/u', ' ', $get('category'));
             $key = mb_strtolower($name);
-            $code = preg_replace('/\s+/u', ' ', $get('code'));
+            $code = preg_replace('/\s+/u', ' ', self::unwrapText($get('code')));
             $codeKey = mb_strtolower($code);
+            $barcodeRaw = $get('barcode');
+            $barcode = self::barcode($barcodeRaw);
 
             if ($name === '') {
                 $errors[] = 'Nama produk kosong.';
@@ -117,6 +123,22 @@ class ProductImport
                     $errors[] = 'Kode produk lebih dari 50 karakter.';
                 } elseif (isset($seenCodes[$codeKey])) {
                     $errors[] = "Kode produk sama dengan baris {$seenCodes[$codeKey]} di file ini.";
+                }
+            }
+
+            if ($barcodeRaw !== '') {
+                if ($barcode === null) {
+                    $errors[] = 'Barcode "' . $barcodeRaw . '" terbaca sebagai angka ilmiah atau rusak oleh Excel. '
+                        . 'Ubah format kolom Barcode menjadi Teks lalu ketik ulang.';
+                } elseif (strlen($barcode) > 64) {
+                    $errors[] = 'Barcode lebih dari 64 karakter.';
+                } elseif (preg_match('/^[\x20-\x7E]+$/', $barcode) !== 1) {
+                    $errors[] = 'Barcode hanya boleh berisi huruf, angka, dan tanda baca biasa.';
+                } elseif (isset($seenBarcodes[$barcode])) {
+                    $errors[] = "Barcode sama dengan baris {$seenBarcodes[$barcode]} di file ini.";
+                } elseif (Barcode::isInternal($barcode) && ! isset($existingBarcodes[$barcode])) {
+                    // kode toko hanya dibuat sistem, supaya tidak bentrok dengan produk yang dibuat nanti
+                    $errors[] = 'Barcode berawalan 20 adalah kode toko yang dibuat otomatis. Kosongkan kolom ini.';
                 }
             }
 
@@ -170,16 +192,29 @@ class ProductImport
                 $seenCodes[$codeKey] = $line;
             }
 
-            // Produk lama dicari lewat KODE dulu; kalau kode kosong / belum dikenal, lewat NAMA.
-            $idByCode = $code !== '' ? ($existingCodes[$codeKey] ?? null) : null;
-            $idByName = $existing[$key] ?? null;
-
-            if ($idByCode && $idByName && $idByCode != $idByName) {
-                $errors[] = 'Kode "' . $code . '" dan nama ini milik dua produk yang berbeda di aplikasi.';
+            if ($barcode !== null && $barcode !== '' && ! isset($seenBarcodes[$barcode])) {
+                $seenBarcodes[$barcode] = $line;
             }
 
-            $existingId = $idByCode ?? $idByName;
-            $matchedBy = $idByCode ? 'code' : ($idByName ? 'name' : null);
+            // Produk lama dicari lewat KODE, lalu BARCODE, lalu NAMA.
+            $idByCode = $code !== '' ? ($existingCodes[$codeKey] ?? null) : null;
+            $idByBarcode = $barcode ? ($existingBarcodes[$barcode] ?? null) : null;
+            $idByName = $existing[$key] ?? null;
+
+            if ($idByCode && $idByBarcode && $idByCode != $idByBarcode) {
+                $errors[] = 'Kode "' . $code . '" dan barcode "' . $barcode . '" milik dua produk yang berbeda di aplikasi.';
+            }
+
+            $idStrong = $idByCode ?? $idByBarcode;
+
+            if ($idStrong && $idByName && $idStrong != $idByName) {
+                $errors[] = $idByCode
+                    ? 'Kode "' . $code . '" dan nama ini milik dua produk yang berbeda di aplikasi.'
+                    : 'Barcode "' . $barcode . '" sudah dipakai produk lain, bukan produk dengan nama ini.';
+            }
+
+            $existingId = $idStrong ?? $idByName;
+            $matchedBy = $idByCode ? 'code' : ($idByBarcode ? 'barcode' : ($idByName ? 'name' : null));
 
             // dua baris tidak boleh memperbarui produk yang sama
             if (! $errors && $existingId) {
@@ -203,6 +238,7 @@ class ProductImport
                 'raw' => array_map($get, array_combine(array_keys(self::LABELS), array_keys(self::LABELS))),
                 'data' => [
                     'code' => $code !== '' ? $code : null,
+                    'barcode' => $barcode !== null && $barcode !== '' ? $barcode : null,
                     'name' => $name,
                     'category' => $category,
                     'price' => is_float($price) ? round($price, 2) : null,
@@ -366,6 +402,38 @@ class ProductImport
         }
 
         return false;
+    }
+
+    /**
+     * Barcode dari sel Excel / CSV.
+     *   "4006381333931" · "4006381333931.0" · ="4006381333931" → "4006381333931"
+     *   "4.00638E+12" (angka ilmiah, digit sudah hilang) → null
+     * @return string|null  '' = kosong · null = rusak
+     */
+    public static function barcode(string $value): ?string
+    {
+        $value = trim(self::unwrapText($value));
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+            return null;
+        }
+
+        // angka dari Excel kadang ditulis "4006381333931.0"
+        if (preg_match('/^(\d+)\.0+$/', $value, $m)) {
+            return $m[1];
+        }
+
+        return $value;
+    }
+
+    /** ="00123" (cara CSV menjaga teks di Excel) → 00123 */
+    private static function unwrapText(string $value): string
+    {
+        return preg_match('/^="(.*)"$/s', trim($value), $m) ? $m[1] : $value;
     }
 
     /** @return int|null  1 = ya · 0 = tidak · null = kosong · -1 = tidak dikenali */

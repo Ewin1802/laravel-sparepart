@@ -144,12 +144,13 @@ class ProductImportController extends Controller
                     $product->category_id = $categories[$categoryKey];
                     $product->price = $data['price'];
 
-                    // dikenali lewat kode → nama di file dianggap nama terbaru
-                    if (($item['matched_by'] ?? null) === 'code') {
+                    // dikenali lewat kode / barcode → nama di file dianggap nama terbaru
+                    if (in_array($item['matched_by'] ?? null, ['code', 'barcode'], true)) {
                         $product->name = $data['name'];
                     }
 
-                    foreach (['code', 'cost_price', 'base_unit', 'description', 'status', 'is_favorite'] as $field) {
+                    // sel kosong (termasuk barcode) tidak menghapus isi lama
+                    foreach (['code', 'barcode', 'cost_price', 'base_unit', 'description', 'status', 'is_favorite'] as $field) {
                         if ($data[$field] !== null) {
                             $product->{$field} = $data[$field];
                         }
@@ -169,6 +170,8 @@ class ProductImportController extends Controller
                 // BARU
                 $product = new Product();
                 $product->code = $data['code'];
+                // kosong → kode toko dibuat otomatis oleh model Product
+                $product->barcode = $data['barcode'];
                 $product->name = $data['name'];
                 $product->category_id = $categories[$categoryKey];
                 $product->price = $data['price'];
@@ -244,8 +247,12 @@ class ProductImportController extends Controller
                         }
                     }
 
-                    // cegah sel dijalankan sebagai rumus saat dibuka di Excel
-                    if ($value !== '' && in_array($value[0], ['=', '+', '@'], true)) {
+                    // barcode angka panjang: tulis ="..." supaya Excel tidak mengubahnya
+                    // jadi 4,00638E+12 atau membuang angka 0 di depan
+                    if ($field === 'barcode' && preg_match('/^\d{8,}$/', $value)) {
+                        $value = '="' . $value . '"';
+                    } elseif ($value !== '' && in_array($value[0], ['=', '+', '@'], true)) {
+                        // cegah sel dijalankan sebagai rumus saat dibuka di Excel
                         $value = "'" . $value;
                     }
 
@@ -271,18 +278,23 @@ class ProductImportController extends Controller
         $rows = SpreadsheetReader::read(Storage::disk('local')->path($path), $extension);
 
         // nama produk yang sudah ada → id (kalau ada nama kembar, yang paling lama dipakai)
-        // kode produk yang sudah ada → id (kode unik, jadi tidak mungkin kembar)
+        // kode & barcode yang sudah ada → id (keduanya unik, jadi tidak mungkin kembar)
         $existing = [];
         $existingCodes = [];
-        foreach (DB::table('products')->orderByDesc('id')->get(['id', 'name', 'code']) as $product) {
+        $existingBarcodes = [];
+        foreach (DB::table('products')->orderByDesc('id')->get(['id', 'name', 'code', 'barcode']) as $product) {
             $existing[mb_strtolower(trim(preg_replace('/\s+/u', ' ', $product->name)))] = $product->id;
 
             if ($product->code !== null && trim($product->code) !== '') {
                 $existingCodes[mb_strtolower(trim(preg_replace('/\s+/u', ' ', $product->code)))] = $product->id;
             }
+
+            if ($product->barcode !== null && trim($product->barcode) !== '') {
+                $existingBarcodes[trim($product->barcode)] = $product->id;
+            }
         }
 
-        $result = ProductImport::analyze($rows, $existing, $existingCodes);
+        $result = ProductImport::analyze($rows, $existing, $existingCodes, $existingBarcodes);
 
         // kategori yang akan dibuat baru + yang namanya mirip kategori lama
         $result['categories'] = $result['ok']

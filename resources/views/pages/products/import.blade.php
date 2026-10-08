@@ -86,7 +86,8 @@
                         </div>
 
                         <ul class="p-cols">
-                            <li><b>Kode Produk</b><small>Opsional, tidak boleh kembar</small></li>
+                            <li><b>Kode Produk</b><small>Kode part, opsional, tidak boleh kembar</small></li>
+                            <li><b>Barcode</b><small>Dari kemasan, opsional. Kosong = kode toko otomatis</small></li>
                             <li><b>Nama Produk</b> <span class="req">wajib</span></li>
                             <li><b>Kategori</b> <span class="req">wajib</span><small>Dibuat otomatis kalau belum ada</small></li>
                             <li><b>Harga Jual</b> <span class="req">wajib</span></li>
@@ -99,7 +100,7 @@
                         </ul>
 
                         <p class="p-send-note is-off">
-                            Kode atau nama yang sudah ada di aplikasi akan <b>diperbarui</b>, bukan dibuat dobel.
+                            Kode, barcode, atau nama yang sudah ada di aplikasi akan <b>diperbarui</b>, bukan dibuat dobel.
                         </p>
                     </section>
                 </aside>
@@ -117,7 +118,7 @@
                     <span class="p-stat-icon"><i data-lucide="refresh-cw"></i></span>
                     <span class="p-stat-label">Diperbarui</span>
                     <strong class="p-stat-value">{{ $counts['update'] }}</strong>
-                    <span class="p-stat-sub">Kode atau nama sudah ada di aplikasi</span>
+                    <span class="p-stat-sub">Kode, barcode, atau nama sudah ada</span>
                 </div>
                 <div class="p-stat {{ $counts['error'] ? 'tone-red' : 'tone-gray' }}">
                     <span class="p-stat-icon"><i data-lucide="triangle-alert"></i></span>
@@ -253,8 +254,18 @@
 
                                     <td class="cell-main">
                                         <div class="p-name">{{ $d['name'] !== '' ? $d['name'] : '(tanpa nama)' }}</div>
-                                        @if (! empty($d['code']))
-                                            <small class="p-desc"><b>{{ $d['code'] }}</b></small>
+                                        @if (! empty($d['code']) || ! empty($d['barcode']))
+                                            <small class="p-desc p-import-codes">
+                                                @if (! empty($d['code']))
+                                                    <b>{{ $d['code'] }}</b>
+                                                @endif
+                                                @if (! empty($d['barcode']))
+                                                    <span title="Barcode"><i data-lucide="barcode"></i>{{ $d['barcode'] }}</span>
+                                                @endif
+                                                @if ($item['state'] === 'update' && ($item['matched_by'] ?? null) !== 'name')
+                                                    <em>· cocok lewat {{ $item['matched_by'] === 'code' ? 'kode' : 'barcode' }}</em>
+                                                @endif
+                                            </small>
                                         @endif
                                         @if ($item['errors'])
                                             <ul class="p-row-errors">
@@ -303,6 +314,13 @@
         @endunless
 
     </div>
+
+    <style>
+        .crud-page .p-import-codes { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .crud-page .p-import-codes span { display: inline-flex; align-items: center; gap: 3px; }
+        .crud-page .p-import-codes svg { width: 12px; height: 12px; }
+        .crud-page .p-import-codes em { font-family: inherit; font-style: normal; color: var(--pm, #667080); }
+    </style>
 @endsection
 
 @push('scripts')
