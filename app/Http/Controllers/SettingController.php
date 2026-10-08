@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class SettingController extends Controller
@@ -109,5 +111,39 @@ class SettingController extends Controller
         return redirect()
             ->route('settings.edit')
             ->with('success', 'Pengaturan berhasil diperbarui.');
+    }
+
+    /**
+     * Tombol "Sudah dibayar" di bagian Server & Tagihan.
+     *
+     * Jatuh tempo dimajukan satu siklus (1 / 3 / 6 / 12 bulan) dari tanggal
+     * jatuh tempo LAMA, bukan dari hari ini — supaya tanggal tagihannya tidak
+     * bergeser walau dibayar lebih awal atau terlambat.
+     */
+    public function serverPaid()
+    {
+        $setting = Setting::first();
+
+        if (! $setting || ! $setting->server_due_date) {
+            return back()->with('error', 'Isi dulu tanggal jatuh tempo server di Pengaturan.');
+        }
+
+        $months = (int) ($setting->server_billing_months ?: 1);
+        $next = Carbon::parse($setting->server_due_date)->startOfDay();
+
+        // kalau sudah telat beberapa siklus, maju terus sampai tanggalnya di masa depan
+        do {
+            $next = $next->addMonthsNoOverflow($months);
+        } while ($next->lte(Carbon::today()));
+
+        DB::table('settings')->where('id', $setting->id)->update([
+            'server_due_date' => $next->toDateString(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with(
+            'success',
+            'Pembayaran server dicatat. Jatuh tempo berikutnya: ' . $next->translatedFormat('d F Y') . '.'
+        );
     }
 }

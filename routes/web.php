@@ -247,7 +247,7 @@ Route::middleware('auth')->group(function () {
             ->name('settings.update');
 
         // tagihan server: "Sudah dibayar" → jatuh tempo maju satu siklus
-        Route::post('settings/server-paid', [ServerBillingController::class, 'paid'])
+        Route::post('settings/server-paid', [SettingController::class, 'serverPaid'])
             ->name('settings.server-paid');
     });
 });
