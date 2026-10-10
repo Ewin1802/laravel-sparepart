@@ -15,6 +15,7 @@ use App\Http\Controllers\ProductLabelController;
 use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StockInController;
+use App\Http\Controllers\StockConversionController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPriceReportController;
 use App\Http\Controllers\UserController;
@@ -165,6 +166,14 @@ Route::middleware('auth')->group(function () {
             ->name('stock-ins.pay');
 
         Route::resource('stock-ins', StockInController::class);
+
+        // buka kemasan: 1 galon → 20 liter eceran (stok & harga beli ikut)
+        Route::get('stock-conversions', [StockConversionController::class, 'index'])
+            ->name('stock-conversions.index');
+        Route::post('stock-conversions', [StockConversionController::class, 'store'])
+            ->name('stock-conversions.store');
+        Route::delete('stock-conversions/{id}', [StockConversionController::class, 'destroy'])
+            ->name('stock-conversions.destroy');
 
         Route::get('reports/supplier-prices', SupplierPriceReportController::class)
             ->name('reports.supplier-prices');
