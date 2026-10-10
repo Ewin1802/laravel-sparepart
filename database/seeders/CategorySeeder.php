@@ -28,7 +28,7 @@ class CategorySeeder extends Seeder
             ],
             [
                 'name' => 'Bucket & Kuku',
-                'description' => 'Kuku bucket (tooth), adapter, pin & lock, side cutter, dan cutting edge.',
+                'description' => 'Kuku bucket (tooth), pin & lock, bushing, shim, side cutter, dan cutting edge.',
                 'image' => null,
             ],
             [
@@ -53,7 +53,34 @@ class CategorySeeder extends Seeder
             ],
             [
                 'name' => 'Kelistrikan & Aki',
-                'description' => 'Aki, alternator, starter, sensor, lampu kerja, dan kabel.',
+                'description' => 'Aki, alternator, starter, switch kontak, relay, lampu kerja, rotari, dan kabel.',
+                'image' => null,
+            ],
+
+            // --- tambahan sesuai daftar barang toko (import Excel) ---
+            [
+                'name' => 'Perkakas',
+                'description' => 'Kunci & mata shock, kunci filter, pompa gemuk, nepel grease, perlengkapan las, dan obeng.',
+                'image' => null,
+            ],
+            [
+                'name' => 'Ban Mobil',
+                'description' => 'Ban mobil & truk ringan merek Accelera, Forceum, GT Radial, dan Hankook.',
+                'image' => null,
+            ],
+            [
+                'name' => 'Cairan & Kimia',
+                'description' => 'Air radiator / coolant, minyak rem, lem kaca, dan carbu cleaner.',
+                'image' => null,
+            ],
+            [
+                'name' => 'Sparepart Truk & Mobil',
+                'description' => 'Stik as roda dan komponen kaki-kaki truk & mobil (Hino, Isuzu, Toyota).',
+                'image' => null,
+            ],
+            [
+                'name' => 'Perlengkapan',
+                'description' => 'Kain majun, stiker keselamatan, dan perlengkapan bengkel lainnya.',
                 'image' => null,
             ],
         ];

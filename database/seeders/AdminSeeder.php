@@ -30,5 +30,15 @@ class AdminSeeder extends Seeder
                 'role' => 'admin',
             ]
         );
+        User::updateOrCreate(
+            ['email' => 'fahniati@kasir.com'],
+            [
+                'name' => 'Fahniati Safari',
+                'email' => 'fahniati@kasir.com',
+                'phone_number' => '081234567898',
+                'password' => Hash::make('password1413'),
+                'role' => 'staff',
+            ]
+        );
     }
 }

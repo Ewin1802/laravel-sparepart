@@ -18,10 +18,10 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             SettingSeeder::class,
             CategorySeeder::class,
-            ProductSeeder::class,
-            OrderSeeder::class,
-            StockInSeeder::class,
-            SupplierSeeder::class,
+            // ProductSeeder::class,
+            // OrderSeeder::class,
+            // StockInSeeder::class,
+            // SupplierSeeder::class,
         ]);
     }
 }
