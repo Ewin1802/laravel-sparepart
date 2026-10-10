@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MemberBarcode;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderPayment;
 use App\Models\Product; // 🔥 tambahkan di atas
 use App\Models\StampTransaction;
 use Illuminate\Database\QueryException;
@@ -142,6 +143,16 @@ class OrderController extends Controller
             ],
 
             // --------------------------------------------------------
+            // PIUTANG (penjualan Tempo) — semuanya opsional supaya
+            // aplikasi kasir versi lama tetap bisa mengirim order.
+            // --------------------------------------------------------
+
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+            'due_date' => ['nullable', 'date'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],   // uang muka (DP)
+            'down_payment_method' => ['nullable', 'string', 'max:30'],
+
+            // --------------------------------------------------------
             // STATUS
             // --------------------------------------------------------
 
@@ -177,6 +188,17 @@ class OrderController extends Controller
                 'gte:0',
             ],
         ]);
+
+        // Nota tempo wajib ada nama pelanggan (untuk penagihan).
+        $isCredit = strcasecmp((string) $request->payment_method, Order::METHOD_CREDIT) === 0;
+
+        if ($isCredit && blank($request->customer_name)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nama pelanggan wajib diisi untuk penjualan tempo.',
+                'errors' => ['customer_name' => ['Nama pelanggan wajib diisi untuk penjualan tempo.']],
+            ], 422);
+        }
 
         // ============================================================
         // CLIENT ORDER ID
@@ -227,7 +249,7 @@ class OrderController extends Controller
 
         try {
 
-            return DB::transaction(function () use ($request) {
+            return DB::transaction(function () use ($request, $isCredit) {
 
                 // ====================================================
                 // MEMBER
@@ -353,6 +375,23 @@ class OrderController extends Controller
                     'customer_name' =>
                         $request->customer_name,
 
+                    'customer_phone' =>
+                        $request->customer_phone,
+
+                    // ------------------------------------------------
+                    // PIUTANG — nilai akhir dihitung ulang di bawah
+                    // lewat syncPaymentState()
+                    // ------------------------------------------------
+
+                    'payment_status' =>
+                        $isCredit ? 'unpaid' : 'paid',
+
+                    'paid_amount' =>
+                        $isCredit ? 0 : (int) $request->total,
+
+                    'due_date' =>
+                        $isCredit ? $request->due_date : null,
+
                     // ------------------------------------------------
                     // STATUS
                     // ------------------------------------------------
@@ -466,6 +505,35 @@ class OrderController extends Controller
                         $quantity
                     );
                 }
+
+                // ====================================================
+                // PIUTANG: UANG MUKA (DP) SAAT TRANSAKSI
+                // ====================================================
+
+                if ($isCredit) {
+                    $downPayment = (int) round((float) $request->input('paid_amount', 0));
+
+                    if ($downPayment > 0) {
+                        OrderPayment::create([
+                            'order_id' => $order->id,
+                            // turunan deterministik dari client_order_id →
+                            // aman kalau order dikirim ulang
+                            'client_payment_id' => \Ramsey\Uuid\Uuid::uuid5(
+                                \Ramsey\Uuid\Uuid::NAMESPACE_URL,
+                                'order-dp:' . $order->client_order_id
+                            )->toString(),
+                            'amount' => $downPayment,
+                            'payment_method' => $request->input('down_payment_method', 'Cash') ?: 'Cash',
+                            'paid_at' => \Carbon\Carbon::parse($order->transaction_time),
+                            'note' => 'Uang muka saat transaksi',
+                            'source' => 'app',
+                            'id_kasir' => $order->id_kasir,
+                            'nama_kasir' => $order->nama_kasir,
+                        ]);
+                    }
+                }
+
+                $order->syncPaymentState();
 
                 // ====================================================
                 // MEMBER STAMP

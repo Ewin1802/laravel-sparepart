@@ -7,10 +7,33 @@
     // Pengingat hutang supplier: nota tempo yang lewat / segera jatuh tempo
     $payables = \App\Support\PayableAlerts::summary();
 
+    // Piutang pelanggan (nota Tempo) yang sudah lewat jatuh tempo
+    try {
+        $receivableOverdue = \App\Models\Order::credit()->openReceivable()
+            ->whereNotNull('due_date')->whereDate('due_date', '<', now()->toDateString())->count();
+        $receivableOpen = \App\Models\Order::credit()->openReceivable()->count();
+    } catch (\Illuminate\Database\QueryException $e) {
+        // kolom piutang belum di-migrate → sidebar tetap tampil
+        $receivableOverdue = 0;
+        $receivableOpen = 0;
+    }
+
     $menuGroups = [
         'Utama' => [
             ['route' => 'dashboard', 'active' => 'dashboard', 'icon' => 'layout-dashboard', 'label' => 'Dashboard'],
             ['route' => 'orders.index', 'active' => 'orders.*', 'icon' => 'receipt-text', 'label' => 'Transaksi'],
+        ],
+        'Keuangan' => [
+            [
+                'route' => 'receivables.index', 'active' => 'receivables.*', 'icon' => 'hand-coins', 'label' => 'Piutang',
+                'badge' => $receivableOverdue > 0 ? $receivableOverdue : $receivableOpen,
+                'badgeClass' => $receivableOverdue > 0 ? 'is-danger' : 'is-warning',
+                'badgeTitle' => $receivableOverdue > 0
+                    ? $receivableOverdue . ' nota tempo lewat jatuh tempo'
+                    : $receivableOpen . ' nota tempo belum lunas',
+                'params' => $receivableOverdue > 0 ? ['status' => 'overdue'] : [],
+            ],
+            ['route' => 'expenses.index', 'active' => 'expenses.*', 'icon' => 'wallet', 'label' => 'Pengeluaran'],
         ],
         'Katalog' => [
             ['route' => 'products.index', 'active' => 'products.*', 'icon' => 'package', 'label' => 'Produk'],
@@ -37,9 +60,7 @@
             ['route' => 'members.index', 'active' => 'members.*', 'icon' => 'id-card', 'label' => 'Member', 'badge' => $totalMembers ?? 0],
             ['route' => 'users.index', 'active' => 'users.*', 'icon' => 'users', 'label' => 'User'],
         ],
-        'Keuangan' => [
-            ['route' => 'expenses.index', 'active' => 'expenses.*', 'icon' => 'wallet', 'label' => 'Pengeluaran'],
-        ],
+
         'Sistem' => [
             ['route' => 'announcements.index', 'active' => 'announcements.*', 'icon' => 'megaphone', 'label' => 'Pengumuman'],
             ['route' => 'settings.edit', 'active' => 'settings.*', 'icon' => 'settings', 'label' => 'Pengaturan'],

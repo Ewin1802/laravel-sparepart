@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1d120d">
 
-    <title>Riwayat Transaksi — {{ $setting?->store_name ?? 'Marimoi Cafe' }}</title>
+    <title>Riwayat Transaksi — {{ $setting?->store_name ?? 'Toko Utama Caterpillar' }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -646,7 +646,7 @@
             <div class="header-content">
 
                 <div class="eyebrow">
-                    Marimoi Member
+                    Toko Utama Caterpillar · Member
                 </div>
 
                 <h1>Riwayat Transaksi</h1>
@@ -749,7 +749,7 @@
 
                     <p>
                         Riwayat transaksi Anda akan muncul di sini
-                        setelah melakukan pembelian di Marimoi.
+                        setelah melakukan pembelian di Toko Utama Caterpillar.
                     </p>
 
                 </div>
@@ -777,7 +777,7 @@
             <i class="fa-solid fa-mug-hot"></i>
 
             <span>
-                Terima kasih telah menjadi bagian dari Marimoi
+                Terima kasih telah menjadi bagian dari Toko Utama Caterpillar
             </span>
 
         </div>

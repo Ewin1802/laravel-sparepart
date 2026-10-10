@@ -225,7 +225,9 @@
                         @forelse ($orders as $order)
                             @php
                                 $time = \Carbon\Carbon::parse($order->transaction_time);
-                                $isCash = strtolower($order->payment_method) === 'cash';
+                                $method = strtolower($order->payment_method);
+                                $isCash = $method === 'cash';
+                                $isCredit = $method === 'tempo';
                                 $inv = $invoice($order->id);
                             @endphp
                             <tr>
@@ -249,10 +251,19 @@
                                 </td>
 
                                 <td data-label="Pembayaran">
-                                    <span class="badge {{ $isCash ? 'badge-cash' : 'badge-transfer' }}">
-                                        <i data-lucide="{{ $isCash ? 'banknote' : 'credit-card' }}"></i>
-                                        {{ $isCash ? 'Cash' : 'Transfer' }}
-                                    </span>
+                                    @if ($isCredit)
+                                        <a href="{{ route('receivables.show', $order->id) }}" class="badge badge-transfer"
+                                            title="{{ ($order->payment_status ?? 'unpaid') === 'paid' ? 'Tempo - lunas' : 'Tempo - belum lunas' }}"
+                                            style="{{ ($order->payment_status ?? 'unpaid') === 'paid' ? '' : 'background:#fef7e6;color:#b7791f;border-color:#fcd34d' }}">
+                                            <i data-lucide="hand-coins"></i>
+                                            Tempo{{ ($order->payment_status ?? 'unpaid') === 'paid' ? ' · lunas' : '' }}
+                                        </a>
+                                    @else
+                                        <span class="badge {{ $isCash ? 'badge-cash' : 'badge-transfer' }}">
+                                            <i data-lucide="{{ $isCash ? 'banknote' : 'credit-card' }}"></i>
+                                            {{ $isCash ? 'Cash' : 'Transfer' }}
+                                        </span>
+                                    @endif
                                 </td>
 
                                 <td data-label="Item">

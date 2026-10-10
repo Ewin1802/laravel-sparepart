@@ -782,6 +782,9 @@ class OrderController extends Controller
 
                 $order->refresh();
 
+                // total / metode bayar bisa berubah → status piutang dihitung ulang
+                $order->syncPaymentState();
+
                 // ============================================================
                 // STEP 6: EVALUASI ULANG STAMP (dari nol, pakai data BARU)
                 // ============================================================

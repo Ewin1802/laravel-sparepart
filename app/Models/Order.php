@@ -41,6 +41,16 @@ class Order extends Model
         'total_item',
 
         // =====================================================
+        // PIUTANG (penjualan tempo)
+        // =====================================================
+
+        'payment_status',
+        'paid_amount',
+        'due_date',
+        'customer_phone',
+        'paid_off_at',
+
+        // =====================================================
         // TABLE / CUSTOMER
         // =====================================================
 
@@ -102,7 +112,78 @@ class Order extends Model
         'table_number' => 'integer',
 
         'id_kasir' => 'integer',
+
+        'paid_amount' => 'integer',
+
+        'due_date' => 'date:Y-m-d',
+
+        'paid_off_at' => 'datetime',
     ];
+
+    /** Metode bayar untuk penjualan tempo (hutang pelanggan). */
+    public const METHOD_CREDIT = 'Tempo';
+
+    protected $appends = ['remaining_amount'];
+
+    // =========================================================
+    // PEMBAYARAN (CICILAN) NOTA TEMPO
+    // =========================================================
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class, 'order_id')->orderBy('paid_at');
+    }
+
+    /** Sisa yang belum dibayar (0 kalau lunas / lebih bayar). */
+    public function getRemainingAmountAttribute(): int
+    {
+        return max(0, (int) $this->total - (int) $this->paid_amount);
+    }
+
+    public function isCredit(): bool
+    {
+        return strcasecmp((string) $this->payment_method, self::METHOD_CREDIT) === 0;
+    }
+
+    public function scopeCredit($query)
+    {
+        return $query->whereRaw('LOWER(payment_method) = ?', [strtolower(self::METHOD_CREDIT)]);
+    }
+
+    public function scopeOpenReceivable($query)
+    {
+        return $query->whereIn('payment_status', ['unpaid', 'partial']);
+    }
+
+    /**
+     * Hitung ulang paid_amount & payment_status dari tabel order_payments.
+     * Order non-tempo (Cash/Transfer) selalu lunas sebesar totalnya.
+     */
+    public function syncPaymentState(): void
+    {
+        if (! $this->isCredit()) {
+            $this->forceFill([
+                'paid_amount' => (int) $this->total,
+                'payment_status' => 'paid',
+                'paid_off_at' => $this->paid_off_at ?? now(),
+            ])->saveQuietly();
+
+            return;
+        }
+
+        $paid = (int) $this->payments()->sum('amount');
+        $total = (int) $this->total;
+
+        $status = $paid <= 0 ? 'unpaid' : ($paid >= $total ? 'paid' : 'partial');
+
+        $this->forceFill([
+            'paid_amount' => $paid,
+            'payment_status' => $status,
+            'paid_off_at' => $status === 'paid'
+                ? ($this->paid_off_at ?? $this->payments()->max('paid_at') ?? now())
+                : null,
+        ])->saveQuietly();
+    }
 
     // =========================================================
     // ORDER ITEMS

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1d120d">
 
-    <title>Pendaftaran Berhasil — {{ $setting->store_name ?? 'Marimoi Cafe' }}</title>
+    <title>Pendaftaran Berhasil — {{ $setting->store_name ?? 'Toko Utama Caterpillar' }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -216,7 +216,7 @@
                 <i class="fa-solid fa-mobile-screen-button"></i>
                 <div>
                     <b>Punya HP Android?</b>
-                    <span>Download aplikasi Marimoi Member, lalu login pakai email
+                    <span>Download aplikasi Toko Utama Caterpillar Member, lalu login pakai email
                         <strong>{{ $member['email'] }}</strong> dan password yang baru saja kamu buat.</span>
                 </div>
             </div>
@@ -225,7 +225,7 @@
                 <i class="fa-solid fa-cash-register"></i>
                 <div>
                     <b>Belum punya app / pakai iPhone?</b>
-                    <span>Tunjukkan QR code di atas ke kasir {{ $setting->store_name ?? 'Marimoi Cafe' }} untuk di-scan
+                    <span>Tunjukkan QR code di atas ke kasir {{ $setting->store_name ?? 'Toko Utama Caterpillar' }} untuk di-scan
                         setiap kali transaksi, biar stamp tetap kehitung. Simpan/screenshot halaman ini, atau
                         login lagi kapan aja di <a
                             href="{{ route('member.portal') }}">{{ route('member.portal') }}</a>.</span>

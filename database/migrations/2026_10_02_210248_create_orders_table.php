@@ -62,7 +62,25 @@ return new class extends Migration
 
             $table->integer('total');
 
+            // Cash | Transfer | Tempo
             $table->string('payment_method');
+
+            // =====================================================
+            // PIUTANG (penjualan Tempo)
+            // =====================================================
+            //
+            // payment_status : paid | partial | unpaid
+            // paid_amount    : total uang yang sudah diterima.
+            //                  Non-tempo = total. Tempo = DP + cicilan
+            //                  (jumlah dari tabel order_payments).
+            // due_date       : jatuh tempo pelunasan (khusus Tempo)
+            // paid_off_at    : kapan nota tempo lunas
+            //
+
+            $table->string('payment_status', 20)->default('paid')->index();
+            $table->integer('paid_amount')->default(0);
+            $table->date('due_date')->nullable()->index();
+            $table->timestamp('paid_off_at')->nullable();
 
             $table->decimal('total_item', 10, 2);
 
@@ -71,6 +89,9 @@ return new class extends Migration
             // =====================================================
             $table->integer('table_number')->nullable();
             $table->string('customer_name')->nullable();
+
+            // nomor HP untuk penagihan piutang (opsional)
+            $table->string('customer_phone', 30)->nullable();
 
             // =====================================================
             // STATUS
@@ -95,7 +116,10 @@ return new class extends Migration
             $table->string('transaction_time');
             $table->timestamps();
             $table->index('transaction_time');
-            $table->index(['id_kasir','transaction_time',]);
+            $table->index(['id_kasir', 'transaction_time']);
+
+            // daftar piutang: filter metode + status
+            $table->index(['payment_method', 'payment_status']);
         });
     }
 

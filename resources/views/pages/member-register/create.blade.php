@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Member — {{ $setting?->store_name ?? 'Marimoi Cafe' }}</title>
+    <title>Daftar Member — {{ $setting?->store_name ?? 'Toko Utama Caterpillar' }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -230,7 +230,7 @@
             </div>
 
             <h1>Gabung Jadi Member</h1>
-            <p>Kumpulkan stamp & minuman gratis di {{ $setting?->store_name ?? 'Marimoi Cafe' }}.</p>
+            <p>Kumpulkan stamp & minuman gratis di {{ $setting?->store_name ?? 'Toko Utama Caterpillar' }}.</p>
 
         </div>
 
@@ -366,7 +366,7 @@
                 </div>
 
                 <small class="form-hint">
-                    Data ini juga bisa dipakai untuk login di aplikasi Marimoi Member (Android) kalau nanti kamu install.
+                    Data ini juga bisa dipakai untuk login di aplikasi Toko Utama Caterpillar Member (Android) kalau nanti kamu install.
                 </small>
 
                 <button type="submit" class="btn-submit">

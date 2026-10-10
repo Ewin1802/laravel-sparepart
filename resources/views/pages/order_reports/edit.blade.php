@@ -120,7 +120,7 @@
                             <div class="field field-full">
                                 <span class="field-label">Metode Pembayaran</span>
                                 <div class="segmented" role="radiogroup" aria-label="Metode pembayaran">
-                                    @foreach (['Cash' => 'banknote', 'Transfer' => 'credit-card'] as $method => $icon)
+                                    @foreach (['Cash' => 'banknote', 'Transfer' => 'credit-card', 'Tempo' => 'hand-coins'] as $method => $icon)
                                         <label>
                                             <input type="radio" name="payment_method" value="{{ $method }}"
                                                 @checked(old('payment_method', $order->payment_method) == $method)>

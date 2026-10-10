@@ -12,6 +12,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProductLabelController;
+use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StockInController;
 use App\Http\Controllers\SupplierController;
@@ -223,6 +224,28 @@ Route::middleware('auth')->group(function () {
         Route::delete('/orders/{id}', [OrderController::class, 'destroy'])
             ->whereNumber('id')
             ->name('orders.destroy');
+
+        /*
+        |--------------------------------------------------------------------------
+        | PIUTANG PELANGGAN (penjualan Tempo dari kasir)
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/receivables', [ReceivableController::class, 'index'])
+            ->name('receivables.index');
+
+        Route::get('/receivables/{id}', [ReceivableController::class, 'show'])
+            ->whereNumber('id')
+            ->name('receivables.show');
+
+        Route::post('/receivables/{id}/payments', [ReceivableController::class, 'storePayment'])
+            ->whereNumber('id')
+            ->name('receivables.payments.store');
+
+        Route::delete('/receivables/{id}/payments/{paymentId}', [ReceivableController::class, 'destroyPayment'])
+            ->whereNumber('id')
+            ->whereNumber('paymentId')
+            ->name('receivables.payments.destroy');
 
         /*
         |--------------------------------------------------------------------------

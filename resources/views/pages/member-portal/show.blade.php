@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1d120d">
 
-    <title>Kartu Member Saya — {{ $setting?->store_name ?? 'Marimoi Cafe' }}</title>
+    <title>Kartu Member Saya — {{ $setting?->store_name ?? 'Toko Utama Caterpillar' }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\OrderItemController;
 use App\Http\Controllers\Api\OrderSyncController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReceivableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -173,6 +174,17 @@ Route::middleware('auth:sanctum')->group(function () {
     |
     */
     Route::post('/save-order', [OrderController::class, 'saveOrder'])->name('orders.save');
+
+    // ======================================================================
+    // PIUTANG PELANGGAN (penjualan Tempo)
+    // ======================================================================
+    //
+    // GET  /api/receivables           nota tempo yang belum lunas
+    // POST /api/receivables/payments  catat pembayaran (idempotent via
+    //                                 client_payment_id)
+    //
+    Route::get('/receivables', [ReceivableController::class, 'index'])->name('api.receivables.index');
+    Route::post('/receivables/payments', [ReceivableController::class, 'storePayment'])->name('api.receivables.payments.store');
 
     // ======================================================================
     // DISCOUNTS
