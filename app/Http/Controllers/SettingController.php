@@ -66,6 +66,7 @@ class SettingController extends Controller
 
             // Status Website
             'maintenance_mode' => ['nullable', 'boolean'],
+            'feature_draft_order' => ['nullable', 'boolean'],
 
             // Server & Tagihan
             'server_provider'       => ['nullable', 'string', 'max:255'],
@@ -104,6 +105,7 @@ class SettingController extends Controller
         }
 
         $validated['maintenance_mode'] = $request->boolean('maintenance_mode');
+        $validated['feature_draft_order'] = $request->boolean('feature_draft_order');
 
         $setting->fill($validated);
         $setting->save();

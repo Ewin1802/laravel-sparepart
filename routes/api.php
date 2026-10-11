@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppSettingController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
@@ -174,6 +175,9 @@ Route::middleware('auth:sanctum')->group(function () {
     |
     */
     Route::post('/save-order', [OrderController::class, 'saveOrder'])->name('orders.save');
+
+    // penanda fitur aplikasi kasir (mis. Draft Order cafe)
+    Route::get('/app-settings', [AppSettingController::class, 'show'])->name('api.app-settings');
 
     // ======================================================================
     // PIUTANG PELANGGAN (penjualan Tempo)

@@ -6,6 +6,7 @@
     @php
         $s = $setting;
         $maintenanceOn = (bool) old('maintenance_mode', $s->maintenance_mode);
+        $draftOrderOn = (bool) old('feature_draft_order', $s->feature_draft_order ?? false);
         $siteUrl = url('/');
 
         $sections = [
@@ -573,6 +574,29 @@
                                 <i data-lucide="save"></i>
                                 Simpan Pengaturan
                             </button>
+                        </div>
+                    </section>
+
+                    {{-- fitur aplikasi kasir --}}
+                    <section class="p-card p-section" id="set-features">
+                        <div class="p-section-head">
+                            <span class="p-section-icon"><i data-lucide="coffee"></i></span>
+                            <div>
+                                <h3>Fitur Aplikasi Kasir</h3>
+                                <p>Aktif di HP kasir setelah aplikasi dibuka ulang atau tombol sinkron produk ditekan.</p>
+                            </div>
+                        </div>
+                        <div class="p-toggle-row">
+                            <div>
+                                <strong>Draft Order (Cafe)</strong>
+                                <small>Mode "Makan di tempat": pilih meja, simpan pesanan, bayar nanti. Matikan untuk toko sparepart saja.</small>
+                            </div>
+                            <label class="p-switch">
+                                <input type="checkbox" name="feature_draft_order" value="1" id="feature_draft_order"
+                                    @checked($draftOrderOn)>
+                                <span class="p-switch-track"></span>
+                                <span class="sr-only">Aktifkan fitur draft order</span>
+                            </label>
                         </div>
                     </section>
                 </aside>

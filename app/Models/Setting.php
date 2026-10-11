@@ -52,10 +52,14 @@ class Setting extends Model
 
         // Status Website
         'maintenance_mode',
+
+        // Fitur aplikasi kasir (dicentang dari web admin)
+        'feature_draft_order',
     ];
 
     protected $casts = [
         'maintenance_mode' => 'boolean',
+        'feature_draft_order' => 'boolean',
     ];
 
     // =====================================================

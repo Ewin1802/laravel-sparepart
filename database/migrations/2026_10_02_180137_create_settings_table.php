@@ -90,7 +90,7 @@ return new class extends Migration
             */
 
             $table->boolean('maintenance_mode')->default(false);
-
+            $table->boolean('feature_draft_order')->default(false);
             $table->string('server_provider')->nullable();                  // mis. "IDCloudHost — VPS 2 GB"
             $table->date('server_due_date')->nullable();                    // jatuh tempo pembayaran berikutnya
             $table->unsignedTinyInteger('server_billing_months')->default(1); // siklus: 1, 3, 6, 12 bulan
