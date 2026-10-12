@@ -596,6 +596,16 @@ class DashboardController extends Controller
 
                 DB::raw(
                     'SUM(order_items.quantity * order_items.price) as omzet'
+                ),
+
+                // modal barang terjual (harga beli dikunci per transaksi)
+                DB::raw(
+                    'SUM(order_items.quantity * COALESCE(order_items.cost_price, 0)) as modal'
+                ),
+
+                // baris penjualan yang belum punya harga beli
+                DB::raw(
+                    'SUM(CASE WHEN order_items.cost_price IS NULL OR order_items.cost_price <= 0 THEN 1 ELSE 0 END) as no_cost'
                 )
 
             )
