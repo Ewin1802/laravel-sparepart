@@ -11,11 +11,16 @@
         'BOTOL' => 'BOTOL',
         'LITER' => 'LITER',
         'GALON' => 'GALON',
+        'PAIL' => 'PAIL — ember',
+        'DRUM' => 'DRUM',
+        'KALENG' => 'KALENG',
         'PAK' => 'PAK — isi beberapa',
+        'ROL' => 'ROL — gulungan',
         'METER' => 'METER — kabel, selang',
+        'KG' => 'KG — kiloan',
     ];
     $currentUnit = old('base_unit', $p->base_unit ?? 'PCS');
-    if ($currentUnit && ! array_key_exists($currentUnit, $units)) {
+    if ($currentUnit && !array_key_exists($currentUnit, $units)) {
         $units = [$currentUnit => $currentUnit] + $units;
     }
 
@@ -104,10 +109,10 @@
 
                 <div class="p-field p-span-2">
                     <label for="description">Deskripsi <span class="req">*</span></label>
-                    <textarea id="description" name="description" rows="5" required
-                        class="@error('description') is-invalid @enderror"
+                    <textarea id="description" name="description" rows="5" required class="@error('description') is-invalid @enderror"
                         placeholder="Merek, kode part, dan cocok untuk kendaraan apa. Contoh: Merek AHM, kode 06455-KVB-901, cocok untuk Beat, Vario 125, Scoopy.">{{ old('description', $p->description ?? '') }}</textarea>
-                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di website.</small>
+                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di
+                        website.</small>
                     @error('description')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
@@ -145,8 +150,8 @@
 
                 <div class="p-field">
                     <label for="stock">{{ $isEdit ? 'Stok' : 'Stok Awal' }} <span class="req">*</span></label>
-                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0" step="any"
-                        inputmode="decimal" required class="@error('stock') is-invalid @enderror">
+                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0"
+                        step="any" inputmode="decimal" required class="@error('stock') is-invalid @enderror">
                     @error('stock')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
@@ -154,9 +159,11 @@
 
                 <div class="p-field">
                     <label for="base_unit">Satuan <span class="req">*</span></label>
-                    <select id="base_unit" name="base_unit" required class="@error('base_unit') is-invalid @enderror">
+                    <select id="base_unit" name="base_unit" required
+                        class="@error('base_unit') is-invalid @enderror">
                         @foreach ($units as $value => $label)
-                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}</option>
+                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}
+                            </option>
                         @endforeach
                     </select>
                     @error('base_unit')
@@ -221,7 +228,8 @@
                 </div>
 
                 @if (Route::has('products.labels'))
-                    <a href="{{ route('products.labels', ['qty' => [$p->id => 1]]) }}" class="p-btn p-btn-ghost p-btn-block">
+                    <a href="{{ route('products.labels', ['qty' => [$p->id => 1]]) }}"
+                        class="p-btn p-btn-ghost p-btn-block">
                         <i data-lucide="printer"></i>
                         Cetak Label
                     </a>
@@ -280,11 +288,38 @@
 
 
 <style>
-    .crud-page .p-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .3px; }
-    .crud-page .p-barcode-preview { display: grid; justify-items: center; gap: 6px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--pb, #e5e7eb); border-radius: 12px; background: #fff; }
-    .crud-page .p-barcode-preview svg { width: 100%; max-width: 260px; height: 64px; }
-    .crud-page .p-barcode-preview span { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; letter-spacing: 1px; }
-    .crud-page .p-btn-block { width: 100%; justify-content: center; }
+    .crud-page .p-mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: .3px;
+    }
+
+    .crud-page .p-barcode-preview {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        padding: 14px;
+        margin-bottom: 12px;
+        border: 1px solid var(--pb, #e5e7eb);
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .crud-page .p-barcode-preview svg {
+        width: 100%;
+        max-width: 260px;
+        height: 64px;
+    }
+
+    .crud-page .p-barcode-preview span {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 13px;
+        letter-spacing: 1px;
+    }
+
+    .crud-page .p-btn-block {
+        width: 100%;
+        justify-content: center;
+    }
 </style>
 
 <script>
@@ -294,7 +329,8 @@
         input.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter') return;
             e.preventDefault();
-            const fields = [...input.form.querySelectorAll('input:not([type=hidden]), select, textarea')];
+            const fields = [...input.form.querySelectorAll(
+                'input:not([type=hidden]), select, textarea')];
             fields[fields.indexOf(input) + 1]?.focus();
         });
     });
