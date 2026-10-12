@@ -209,6 +209,14 @@ class OrderController extends Controller
                 )
                 ->sum('total'),
 
+            // penjualan Tempo (piutang) — dipisah dari Cash/Transfer
+            'total_tempo' => (clone $query)
+                ->whereRaw(
+                    'LOWER(payment_method) = ?',
+                    ['tempo']
+                )
+                ->sum('total'),
+
             'total_order' => (clone $query)
                 ->count(),
 
@@ -290,7 +298,13 @@ class OrderController extends Controller
                     )
                 ) AS trx_date,
 
-                SUM(total) AS total
+                SUM(total) AS total,
+
+                SUM(CASE WHEN LOWER(payment_method) = 'tempo'
+                    THEN total ELSE 0 END) AS tempo_total,
+
+                SUM(CASE WHEN LOWER(payment_method) = 'tempo'
+                    THEN 0 ELSE total END) AS paid_total
             ")
             ->groupBy('trx_date')
             ->orderBy('trx_date')

@@ -8,19 +8,23 @@
 
 @section('content')
     @php
-        $rp = fn ($n) => "Rp\u{00A0}" . number_format((float) ($n ?? 0), 0, ',', '.');
-        $num = fn ($n) => number_format((float) ($n ?? 0), 0, ',', '.');
-        $invoice = fn ($id) => 'INV' . str_pad($id, 6, '0', STR_PAD_LEFT);
+        $rp = fn($n) => "Rp\u{00A0}" . number_format((float) ($n ?? 0), 0, ',', '.');
+        $num = fn($n) => number_format((float) ($n ?? 0), 0, ',', '.');
+        $invoice = fn($id) => 'INV' . str_pad($id, 6, '0', STR_PAD_LEFT);
 
         $ranges = [1 => 'Hari ini', 2 => '2 hari', 7 => '7 hari', 14 => '14 hari', 30 => '30 hari', 90 => '90 hari'];
 
         $cashTotal = (float) ($summary['total_cash'] ?? 0);
         $transferTotal = (float) ($summary['total_transfer'] ?? 0);
-        $paymentSum = $cashTotal + $transferTotal;
-        $cashPct = $paymentSum > 0 ? round($cashTotal / $paymentSum * 100) : 0;
+        $tempoTotal = (float) ($summary['total_tempo'] ?? 0);
+        $paymentSum = $cashTotal + $transferTotal + $tempoTotal;
+        // persentase penjualan yang langsung lunas (Cash + Transfer)
+        $paidPct = $paymentSum > 0 ? round((($cashTotal + $transferTotal) / $paymentSum) * 100) : 0;
 
         $chartLabels = $chartData->pluck('trx_date')->values();
-        $chartValues = $chartData->pluck('total')->map(fn ($v) => (float) $v)->values();
+        $chartValues = $chartData->pluck('total')->map(fn($v) => (float) $v)->values();
+        $chartPaid = $chartData->pluck('paid_total')->map(fn($v) => (float) $v)->values();
+        $chartTempo = $chartData->pluck('tempo_total')->map(fn($v) => (float) $v)->values();
     @endphp
 
     <div class="order-page">
@@ -146,7 +150,10 @@
                         <h3>Grafik Pendapatan</h3>
                         <small>{{ $ranges[$range] ?? $range . ' hari' }} terakhir</small>
                     </div>
-                    <span class="card-header-icon"><i data-lucide="chart-no-axes-column"></i></span>
+                    <div class="chart-legend">
+                        <span><i class="dot cash"></i> Cash / Transfer</span>
+                        <span><i class="dot tempo"></i> Tempo</span>
+                    </div>
                 </div>
 
                 @if ($chartValues->sum() > 0)
@@ -166,7 +173,7 @@
                 <div class="card-header">
                     <div>
                         <h3>Metode Pembayaran</h3>
-                        <small>Cash vs Transfer</small>
+                        <small>Cash · Transfer · Tempo</small>
                     </div>
                     <span class="card-header-icon"><i data-lucide="wallet-cards"></i></span>
                 </div>
@@ -175,8 +182,8 @@
                     <div class="payment-chart-container" data-order-chart="payment">
                         <canvas id="paymentChart" aria-label="Grafik metode pembayaran" role="img"></canvas>
                         <div class="donut-center">
-                            <strong>{{ $cashPct }}%</strong>
-                            <span>Cash</span>
+                            <strong>{{ $paidPct }}%</strong>
+                            <span>Lunas</span>
                         </div>
                     </div>
                 @else
@@ -189,6 +196,7 @@
                 <div class="payment-legend">
                     <div><span class="dot cash"></span> Cash <strong>{{ $rp($cashTotal) }}</strong></div>
                     <div><span class="dot transfer"></span> Transfer <strong>{{ $rp($transferTotal) }}</strong></div>
+                    <div><span class="dot tempo"></span> Tempo <strong>{{ $rp($tempoTotal) }}</strong></div>
                 </div>
             </div>
         </div>
@@ -252,7 +260,8 @@
 
                                 <td data-label="Pembayaran">
                                     @if ($isCredit)
-                                        <a href="{{ route('receivables.show', $order->id) }}" class="badge badge-transfer"
+                                        <a href="{{ route('receivables.show', $order->id) }}"
+                                            class="badge badge-transfer"
                                             title="{{ ($order->payment_status ?? 'unpaid') === 'paid' ? 'Tempo - lunas' : 'Tempo - belum lunas' }}"
                                             style="{{ ($order->payment_status ?? 'unpaid') === 'paid' ? '' : 'background:#fef7e6;color:#b7791f;border-color:#fcd34d' }}">
                                             <i data-lucide="hand-coins"></i>
@@ -418,8 +427,10 @@
                 <div class="modal-total-box">
                     <div class="total-row"><span>Subtotal</span><strong id="modalSubtotal">Rp 0</strong></div>
                     <div class="total-row"><span>Pajak</span><strong id="modalTax">Rp 0</strong></div>
-                    <div class="total-row" id="modalServiceRow"><span>Biaya Jasa</span><strong id="modalService">Rp 0</strong></div>
-                    <div class="total-row" id="modalDiscountRow"><span>Diskon</span><strong id="modalDiscount">Rp 0</strong></div>
+                    <div class="total-row" id="modalServiceRow"><span>Biaya Jasa</span><strong id="modalService">Rp
+                            0</strong></div>
+                    <div class="total-row" id="modalDiscountRow"><span>Diskon</span><strong id="modalDiscount">Rp
+                            0</strong></div>
                     <div class="total-divider"></div>
                     <div class="total-row total-final"><span>Total</span><strong id="modalTotal">Rp 0</strong></div>
                 </div>
@@ -465,7 +476,7 @@
                    MODAL DETAIL
                 ====================================================== */
                 const modal = $('orderDetailModal');
-                let controller = null;   // batalkan request lama kalau klik cepat berkali-kali
+                let controller = null; // batalkan request lama kalau klik cepat berkali-kali
                 const cache = new Map(); // detail yang sudah dibuka tidak diambil ulang
 
                 const show = (state) => {
@@ -493,11 +504,18 @@
                     if (!value) return '-';
                     const d = new Date(String(value).replace(' ', 'T'));
                     return isNaN(d) ? value : d.toLocaleString('id-ID', {
-                        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
                     });
                 };
 
-                const render = ({ order, items = [] }) => {
+                const render = ({
+                    order,
+                    items = []
+                }) => {
                     $('modalInvoice').textContent = order.invoice || '-';
                     $('modalCustomer').textContent = order.customer_name || 'Umum';
                     $('modalCashier').textContent = order.nama_kasir || '-';
@@ -564,7 +582,10 @@
 
                     try {
                         const res = await fetch(@json(url('/orders')) + '/' + encodeURIComponent(id), {
-                            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
                             signal: controller.signal
                         });
 
@@ -600,7 +621,13 @@
                    terlihat (lazy load), animasi dimatikan.
                 ====================================================== */
                 const CHART_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
-                const COLORS = { accent: '#FF6A1A', ink: '#2A2F37', grid: 'rgba(20,23,28,.06)', muted: '#8A93A0' };
+                const COLORS = {
+                    accent: '#FF6A1A',
+                    ink: '#2A2F37',
+                    tempo: '#FFB020',
+                    grid: 'rgba(20,23,28,.06)',
+                    muted: '#8A93A0'
+                };
 
                 const shortRp = (v) => {
                     const n = Math.abs(v);
@@ -616,12 +643,23 @@
                         data: {
                             labels: @json($chartLabels),
                             datasets: [{
-                                data: @json($chartValues),
+                                label: 'Cash / Transfer',
+                                data: @json($chartPaid),
                                 backgroundColor: COLORS.accent,
                                 hoverBackgroundColor: '#E2550A',
-                                borderRadius: 6,
+                                borderRadius: 4,
                                 borderSkipped: false,
-                                maxBarThickness: 36
+                                maxBarThickness: 36,
+                                stack: 'sales'
+                            }, {
+                                label: 'Tempo (piutang)',
+                                data: @json($chartTempo),
+                                backgroundColor: COLORS.tempo,
+                                hoverBackgroundColor: '#F09A00',
+                                borderRadius: 4,
+                                borderSkipped: false,
+                                maxBarThickness: 36,
+                                stack: 'sales'
                             }]
                         },
                         options: {
@@ -629,12 +667,47 @@
                             maintainAspectRatio: false,
                             animation: false,
                             plugins: {
-                                legend: { display: false },
-                                tooltip: { callbacks: { label: (c) => rupiah(c.parsed.y) } }
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    filter: (c) => c.parsed.y > 0,
+                                    callbacks: {
+                                        label: (c) => ' ' + c.dataset.label + ': ' + rupiah(c.parsed.y),
+                                        footer: (items) => 'Total: ' + rupiah(items.reduce((s, i) => s + i
+                                            .parsed.y, 0))
+                                    }
+                                }
                             },
                             scales: {
-                                x: { grid: { display: false }, ticks: { color: COLORS.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-                                y: { beginAtZero: true, grid: { color: COLORS.grid }, border: { display: false }, ticks: { color: COLORS.muted, callback: shortRp } }
+                                x: {
+                                    stacked: true,
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: COLORS.muted,
+                                        maxRotation: 0,
+                                        autoSkip: true,
+                                        maxTicksLimit: 8
+                                    }
+                                },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: COLORS.grid
+                                    },
+                                    border: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: COLORS.muted,
+                                        callback: shortRp
+                                    }
+                                }
                             }
                         }
                     }),
@@ -642,10 +715,11 @@
                     payment: () => new Chart($('paymentChart'), {
                         type: 'doughnut',
                         data: {
-                            labels: ['Cash', 'Transfer'],
+                            labels: ['Cash', 'Transfer', 'Tempo'],
                             datasets: [{
-                                data: [{{ $cashTotal }}, {{ $transferTotal }}],
-                                backgroundColor: [COLORS.accent, COLORS.ink],
+                                data: [{{ $cashTotal }}, {{ $transferTotal }},
+                                    {{ $tempoTotal }}],
+                                backgroundColor: [COLORS.accent, COLORS.ink, COLORS.tempo],
                                 borderWidth: 0,
                                 hoverOffset: 4
                             }]
@@ -656,17 +730,23 @@
                             animation: false,
                             cutout: '74%',
                             plugins: {
-                                legend: { display: false },
-                                tooltip: { callbacks: { label: (c) => c.label + ': ' + rupiah(c.parsed) } }
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (c) => c.label + ': ' + rupiah(c.parsed)
+                                    }
+                                }
                             }
                         }
                     })
                 };
 
                 let chartLoader;
-                const loadChartJs = () => window.Chart
-                    ? Promise.resolve()
-                    : (chartLoader ??= new Promise((resolve, reject) => {
+                const loadChartJs = () => window.Chart ?
+                    Promise.resolve() :
+                    (chartLoader ??= new Promise((resolve, reject) => {
                         const s = document.createElement('script');
                         s.src = CHART_SRC;
                         s.async = true;
@@ -688,7 +768,9 @@
                                 io.unobserve(en.target);
                                 draw(en.target);
                             });
-                        }, { rootMargin: '250px 0px' });
+                        }, {
+                            rootMargin: '250px 0px'
+                        });
                         boxes.forEach((b) => io.observe(b));
                     } else {
                         boxes.forEach(draw);
@@ -696,5 +778,36 @@
                 }
             })();
         </script>
+        <style>
+            .chart-legend {
+                display: flex;
+                gap: 14px;
+                flex-wrap: wrap;
+                font-size: 12.5px;
+                font-weight: 600;
+                color: #4b5563;
+            }
+
+            .chart-legend span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .chart-legend .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 3px;
+                display: inline-block;
+            }
+
+            .chart-legend .dot.cash {
+                background: #FF6A1A;
+            }
+
+            .dot.tempo {
+                background: #FFB020 !important;
+            }
+        </style>
     @endpush
 @endsection
