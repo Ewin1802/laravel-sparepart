@@ -152,6 +152,14 @@
                     <label for="stock">{{ $isEdit ? 'Stok' : 'Stok Awal' }} <span class="req">*</span></label>
                     <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0"
                         step="any" inputmode="decimal" required class="@error('stock') is-invalid @enderror">
+                    @if ($isEdit)
+                        <small class="p-hint">Ubah hanya untuk koreksi hasil hitung fisik. Barang datang dari supplier
+                            dicatat lewat <b>Stok Masuk</b>.</small>
+                    @else
+                        <small class="p-hint">Isi <b>0</b> untuk barang yang baru dibeli — catat lewat <b>Stok
+                                Masuk</b> supaya stok tidak dobel. Isi angka hanya untuk barang lama yang sudah ada di
+                            rak.</small>
+                    @endif
                     @error('stock')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
