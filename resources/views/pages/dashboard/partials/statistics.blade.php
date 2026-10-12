@@ -1,6 +1,12 @@
 @php
     $cashPct = max(0, min(100, (float) ($cashPercent ?? 0)));
     $transferPct = max(0, min(100, (float) ($transferPercent ?? 0)));
+
+    // komposisi penjualan HARI INI: cash / transfer / tempo
+    $todaySales = (float) ($todayCash ?? 0) + (float) ($todayTransfer ?? 0) + (float) ($todayTempo ?? 0);
+    $tCash = $todaySales > 0 ? round(($todayCash ?? 0) / $todaySales * 100, 1) : 0;
+    $tTransfer = $todaySales > 0 ? round(($todayTransfer ?? 0) / $todaySales * 100, 1) : 0;
+    $tTempo = $todaySales > 0 ? max(0, 100 - $tCash - $tTransfer) : 0;
     $expensePct = max(0, min(100, (float) ($expensePercent ?? 0)));
 @endphp
 
@@ -17,9 +23,12 @@
         <div class="stat-card">
             <span class="stat-icon orange"><i data-lucide="wallet"></i></span>
             <div class="stat-content">
-                <div class="stat-title">Pendapatan</div>
+                <div class="stat-title">Penjualan</div>
                 <div class="stat-number">{{ $rp($todayRevenue ?? 0) }}</div>
-                <div class="stat-desc"><i data-lucide="trending-up"></i> {{ $num($todayOrders ?? 0) }} transaksi</div>
+                <div class="stat-desc">
+                    <i data-lucide="trending-up"></i>
+                    {{ $num($todayOrders ?? 0) }} transaksi{{ ($todayTempo ?? 0) > 0 ? ' · tempo ' . $rp($todayTempo) : '' }}
+                </div>
             </div>
         </div>
 
@@ -37,7 +46,7 @@
             <div class="stat-content">
                 <div class="stat-title">Laba Bersih</div>
                 <div class="stat-number">{{ $rp($todayNetIncome ?? 0) }}</div>
-                <div class="stat-desc">Pendapatan − pajak − pengeluaran</div>
+                <div class="stat-desc">Penjualan − modal {{ $rp($todayCogs ?? 0) }} − pajak − pengeluaran</div>
             </div>
         </div>
 
@@ -45,16 +54,22 @@
         <div class="stat-card">
             <span class="stat-icon slate"><i data-lucide="banknote"></i></span>
             <div class="stat-content">
-                <div class="stat-title">Cash · Transfer</div>
-                <div class="pay-split">
+                <div class="stat-title">Uang Masuk</div>
+                <div class="stat-number">{{ $rp($todayCashIn ?? 0) }}</div>
+                <div class="pay-split pay-split-3">
                     <div><small>Cash</small><strong>{{ $rp($todayCash ?? 0) }}</strong></div>
                     <div><small>Transfer</small><strong>{{ $rp($todayTransfer ?? 0) }}</strong></div>
+                    <div><small>Tempo</small><strong class="is-tempo">{{ $rp($todayTempo ?? 0) }}</strong></div>
                 </div>
                 <div class="split-bar" role="img"
-                    aria-label="Cash {{ $cashPct }} persen, transfer {{ $transferPct }} persen">
-                    <span class="is-cash" style="width: {{ $cashPct }}%"></span>
-                    <span class="is-transfer" style="width: {{ $transferPct }}%"></span>
+                    aria-label="Penjualan hari ini: cash {{ $tCash }} persen, transfer {{ $tTransfer }} persen, tempo {{ $tTempo }} persen">
+                    <span class="is-cash" style="width: {{ $tCash }}%"></span>
+                    <span class="is-transfer" style="width: {{ $tTransfer }}%"></span>
+                    <span class="is-tempo" style="width: {{ $tTempo }}%"></span>
                 </div>
+                @if (($todayTempoReceived ?? 0) > 0)
+                    <div class="stat-desc">Termasuk DP/cicilan tempo {{ $rp($todayTempoReceived) }}</div>
+                @endif
             </div>
         </div>
     </div>
@@ -182,7 +197,17 @@
                 <div class="progress-bar" style="width: {{ $expensePct }}%"></div>
             </div>
             <strong>{{ number_format($expensePercent ?? 0, 1, ',', '.') }}%</strong>
-            <small>dari pendapatan</small>
+            <small>dari penjualan</small>
         </div>
     </div>
 </section>
+
+@once
+    @push('css')
+        <style>
+            .pay-split .is-tempo { color: #b7791f; }
+            .split-bar .is-tempo { background: #FFB020; }
+            .dot.tempo { background: #FFB020; }
+        </style>
+    @endpush
+@endonce

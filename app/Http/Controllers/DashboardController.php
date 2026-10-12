@@ -32,6 +32,55 @@ class DashboardController extends Controller
 
     /**
      * =========================================================
+     * RINGKASAN UANG & MODAL PER PERIODE
+     * =========================================================
+     *
+     * $orderWhere : kondisi SQL untuk orders (pakai transaction_time)
+     * $paidFrom / $paidTo : rentang tanggal untuk order_payments.paid_at
+     *
+     * - tempo      : penjualan Tempo (nilai nota) pada periode ini
+     * - cash_in    : UANG YANG BENAR-BENAR MASUK =
+     *                nota Cash/Transfer + DP & cicilan Tempo yang
+     *                diterima pada periode ini (tabel order_payments)
+     * - cogs       : modal barang terjual (qty × harga beli per baris)
+     * - no_cost    : jumlah baris penjualan yang belum punya harga beli
+     */
+    private function periodMoney(string $orderWhere, Carbon $paidFrom, Carbon $paidTo): array
+    {
+        $tempo = (float) Order::whereRaw($orderWhere)
+            ->whereRaw('LOWER(payment_method) = ?', ['tempo'])
+            ->sum('total');
+
+        $paidNow = (float) Order::whereRaw($orderWhere)
+            ->whereRaw('LOWER(payment_method) <> ?', ['tempo'])
+            ->sum('total');
+
+        $tempoReceived = (float) DB::table('order_payments')
+            ->whereBetween('paid_at', [$paidFrom->copy()->startOfDay(), $paidTo->copy()->endOfDay()])
+            ->sum('amount');
+
+        $cost = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->whereRaw(str_replace('transaction_time', 'orders.transaction_time', $orderWhere))
+            ->selectRaw('
+                COALESCE(SUM(order_items.quantity * COALESCE(order_items.cost_price, 0)), 0) AS cogs,
+                COALESCE(SUM(CASE WHEN order_items.cost_price IS NULL OR order_items.cost_price <= 0 THEN 1 ELSE 0 END), 0) AS no_cost
+            ')
+            ->first();
+
+        return [
+            'tempo' => $tempo,
+            'paid_now' => $paidNow,
+            'tempo_received' => $tempoReceived,
+            'cash_in' => $paidNow + $tempoReceived,
+            'cogs' => (float) ($cost->cogs ?? 0),
+            'no_cost' => (int) ($cost->no_cost ?? 0),
+        ];
+    }
+
+
+    /**
+     * =========================================================
      * DASHBOARD
      * =========================================================
      */
@@ -117,8 +166,20 @@ class DashboardController extends Controller
         |
         */
 
+        $todayMoney = $this->periodMoney(
+            "DATE($transactionDate) = CURDATE()",
+            Carbon::today(),
+            Carbon::today()
+        );
+
+        $todayTempo = $todayMoney['tempo'];
+        $todayCashIn = $todayMoney['cash_in'];
+        $todayTempoReceived = $todayMoney['tempo_received'];
+        $todayCogs = $todayMoney['cogs'];
+
+        // Laba = penjualan − modal barang − pajak − pengeluaran
         $todayNetIncome =
-            $todayRevenue - $todayTax - $todayExpense;
+            $todayRevenue - $todayCogs - $todayTax - $todayExpense;
 
 
         /*
@@ -207,8 +268,35 @@ class DashboardController extends Controller
         |
         */
 
+        $monthMoney = $this->periodMoney(
+            "YEAR($transactionDate) = YEAR(CURDATE()) AND MONTH($transactionDate) = MONTH(CURDATE())",
+            Carbon::now()->startOfMonth(),
+            Carbon::now()->endOfMonth()
+        );
+
+        $monthTempo = $monthMoney['tempo'];
+        $monthCashIn = $monthMoney['cash_in'];
+        $monthTempoReceived = $monthMoney['tempo_received'];
+        $monthCogs = $monthMoney['cogs'];
+        $monthNoCost = $monthMoney['no_cost'];
+
+        // Laba = penjualan − modal barang − pajak − pengeluaran
         $monthNetIncome =
-            $monthRevenue - $monthTax - $monthExpense;
+            $monthRevenue - $monthCogs - $monthTax - $monthExpense;
+
+        /*
+        |--------------------------------------------------------------------------
+        | PIUTANG BERJALAN (semua nota Tempo yang belum lunas)
+        |--------------------------------------------------------------------------
+        */
+
+        $receivable = Order::whereRaw('LOWER(payment_method) = ?', ['tempo'])
+            ->where('payment_status', '!=', 'paid')
+            ->selectRaw('COALESCE(SUM(total - paid_amount), 0) AS outstanding, COUNT(*) AS notes')
+            ->first();
+
+        $receivableOutstanding = (float) ($receivable->outstanding ?? 0);
+        $receivableNotes = (int) ($receivable->notes ?? 0);
 
 
         /*
@@ -574,7 +662,8 @@ class DashboardController extends Controller
 
         $totalPayment =
             $monthCash +
-            $monthTransfer;
+            $monthTransfer +
+            $monthTempo;
 
 
         $cashPercent = $totalPayment > 0
@@ -588,6 +677,13 @@ class DashboardController extends Controller
         $transferPercent = $totalPayment > 0
             ? round(
                 ($monthTransfer / $totalPayment) * 100,
+                1
+            )
+            : 0;
+
+        $tempoPercent = $totalPayment > 0
+            ? round(
+                ($monthTempo / $totalPayment) * 100,
                 1
             )
             : 0;
@@ -862,6 +958,10 @@ class DashboardController extends Controller
                 'todayTax',
                 'todayExpense',
                 'todayNetIncome',
+                'todayTempo',
+                'todayCashIn',
+                'todayTempoReceived',
+                'todayCogs',
 
                 // Bulan Ini
                 'monthRevenue',
@@ -871,6 +971,13 @@ class DashboardController extends Controller
                 'monthTax',
                 'monthExpense',
                 'monthNetIncome',
+                'monthTempo',
+                'monthCashIn',
+                'monthTempoReceived',
+                'monthCogs',
+                'monthNoCost',
+                'receivableOutstanding',
+                'receivableNotes',
 
                 // Pengeluaran
                 'totalExpense',
@@ -916,6 +1023,7 @@ class DashboardController extends Controller
                 // Statistik
                 'cashPercent',
                 'transferPercent',
+                'tempoPercent',
                 'averageOrder',
                 'weeklyRevenue',
                 'weeklyTax',

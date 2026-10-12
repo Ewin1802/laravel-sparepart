@@ -45,24 +45,47 @@
 
     <div class="month-metrics">
         <div class="metric">
-            <span class="metric-label">Pendapatan</span>
+            <span class="metric-label">Penjualan</span>
             <strong class="metric-value">{{ $rp($monthRevenue ?? 0) }}</strong>
-            <span class="metric-foot"><i data-lucide="trending-up"></i> Total penjualan</span>
-        </div>
-
-        <div class="metric">
-            <span class="metric-label">Pengeluaran</span>
-            <strong class="metric-value">{{ $rp($monthExpense ?? 0) }}</strong>
             <span class="metric-foot">
-                <i data-lucide="trending-down"></i>
-                {{ number_format($expensePercent ?? 0, 1, ',', '.') }}% dari pendapatan
+                <i data-lucide="trending-up"></i>
+                @if (($monthTempo ?? 0) > 0)
+                    Termasuk tempo {{ $rp($monthTempo) }}
+                @else
+                    Total nota penjualan
+                @endif
             </span>
         </div>
 
         <div class="metric">
-            <span class="metric-label">Pajak</span>
-            <strong class="metric-value">{{ $rp($monthTax ?? 0) }}</strong>
-            <span class="metric-foot"><i data-lucide="landmark"></i> Kewajiban pajak</span>
+            <span class="metric-label">Uang Masuk</span>
+            <strong class="metric-value">{{ $rp($monthCashIn ?? 0) }}</strong>
+            <span class="metric-foot">
+                <i data-lucide="banknote"></i>
+                Cash · Transfer{{ ($monthTempoReceived ?? 0) > 0 ? ' · cicilan ' . $rp($monthTempoReceived) : '' }}
+            </span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">Piutang Belum Dibayar</span>
+            <strong class="metric-value">{{ $rp($receivableOutstanding ?? 0) }}</strong>
+            <span class="metric-foot">
+                <i data-lucide="hand-coins"></i>
+                @if (Route::has('receivables.index'))
+                    <a href="{{ route('receivables.index') }}" style="color: inherit">{{ $num($receivableNotes ?? 0) }} nota tempo →</a>
+                @else
+                    {{ $num($receivableNotes ?? 0) }} nota tempo
+                @endif
+            </span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">Modal &amp; Pengeluaran</span>
+            <strong class="metric-value">{{ $rp(($monthCogs ?? 0) + ($monthExpense ?? 0) + ($monthTax ?? 0)) }}</strong>
+            <span class="metric-foot">
+                <i data-lucide="trending-down"></i>
+                Modal {{ $rp($monthCogs ?? 0) }} · biaya {{ $rp($monthExpense ?? 0) }}{{ ($monthTax ?? 0) > 0 ? ' · pajak ' . $rp($monthTax) : '' }}
+            </span>
         </div>
 
         <div class="metric is-accent">
@@ -70,14 +93,12 @@
             <strong class="metric-value">{{ $rp($monthNetIncome ?? 0) }}</strong>
             <span class="metric-foot">
                 <i data-lucide="badge-dollar-sign"></i>
-                Margin {{ number_format($netIncomePercent ?? 0, 1, ',', '.') }}%
+                @if (($monthNoCost ?? 0) > 0)
+                    {{ $num($monthNoCost) }} item belum ada harga beli
+                @else
+                    Margin {{ number_format($netIncomePercent ?? 0, 1, ',', '.') }}%
+                @endif
             </span>
-        </div>
-
-        <div class="metric">
-            <span class="metric-label">Rata-rata Transaksi</span>
-            <strong class="metric-value">{{ $rp($averageOrder ?? 0) }}</strong>
-            <span class="metric-foot"><i data-lucide="wallet"></i> Per nota</span>
         </div>
     </div>
 </section>

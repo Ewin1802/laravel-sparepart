@@ -1,7 +1,9 @@
 @php
     $cashPct = (float) ($cashPercent ?? 0);
     $transferPct = (float) ($transferPercent ?? 0);
-    $hasPayment = $cashPct + $transferPct > 0;
+    $tempoPct = (float) ($tempoPercent ?? 0);
+    $paidPct = $cashPct + $transferPct;
+    $hasPayment = $cashPct + $transferPct + $tempoPct > 0;
 @endphp
 
 <div class="dashboard-chart-grid">
@@ -12,7 +14,7 @@
     <div class="chart-card">
         <div class="chart-header">
             <div>
-                <h3 class="chart-title">Pendapatan vs Pengeluaran</h3>
+                <h3 class="chart-title">Penjualan vs Pengeluaran</h3>
                 <p>Perbandingan keuangan 30 hari terakhir.</p>
             </div>
             <span class="chart-badge">30 Hari</span>
@@ -31,7 +33,7 @@
         <div class="chart-header">
             <div>
                 <h3 class="chart-title">Metode Pembayaran</h3>
-                <p>Persentase transaksi bulan ini.</p>
+                <p>Persentase penjualan bulan ini.</p>
             </div>
         </div>
 
@@ -54,6 +56,10 @@
             <div class="payment-row">
                 <span><span class="dot transfer"></span> Transfer</span>
                 <strong>{{ number_format($transferPct, 1, ',', '.') }}%</strong>
+            </div>
+            <div class="payment-row">
+                <span><span class="dot tempo"></span> Tempo</span>
+                <strong>{{ number_format($tempoPct, 1, ',', '.') }}%</strong>
             </div>
         </div>
     </div>
@@ -112,7 +118,7 @@
                         height
                     },
                     series: [{
-                            name: 'Pendapatan',
+                            name: 'Penjualan',
                             data: @json($chartSeries ?? [])
                         },
                         {
@@ -210,9 +216,9 @@
                         type: 'donut',
                         height
                     },
-                    series: [{{ $cashPct }}, {{ $transferPct }}],
-                    labels: ['Cash', 'Transfer'],
-                    colors: [C.accent, C.ink],
+                    series: [{{ $cashPct }}, {{ $transferPct }}, {{ $tempoPct }}],
+                    labels: ['Cash', 'Transfer', 'Tempo'],
+                    colors: [C.accent, C.ink, '#FFB020'],
                     legend: {
                         show: false
                     },
@@ -230,8 +236,8 @@
                                     show: true,
                                     total: {
                                         show: true,
-                                        label: 'Cash',
-                                        formatter: () => '{{ number_format($cashPct, 0) }}%'
+                                        label: 'Lunas',
+                                        formatter: () => '{{ number_format($paidPct, 0) }}%'
                                     }
                                 }
                             }

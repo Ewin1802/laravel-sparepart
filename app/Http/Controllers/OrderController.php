@@ -723,6 +723,12 @@ class OrderController extends Controller
                 // STEP 3: HAPUS ITEM LAMA
                 // ============================================================
 
+                // modal lama per produk disimpan dulu, supaya koreksi
+                // transaksi tidak mengubah harga beli penjualan lama
+                $oldCost = $order->orderItems()
+                    ->whereNotNull('cost_price')
+                    ->pluck('cost_price', 'product_id');
+
                 $order->orderItems()->delete();
 
                 // ============================================================
@@ -757,6 +763,7 @@ class OrderController extends Controller
                         'product_name' => $product->name,
                         'quantity' => $quantity,
                         'price' => $itemInput['price'],
+                        'cost_price' => $oldCost[$product->id] ?? $product->cost_price,
                     ]);
 
                     $product->decrement('stock', $quantity);

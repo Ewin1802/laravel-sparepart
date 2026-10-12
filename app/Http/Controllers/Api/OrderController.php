@@ -494,6 +494,10 @@ class OrderController extends Controller
 
                         'price' =>
                             $item['price'],
+
+                        // modal per baris, dikunci saat transaksi
+                        'cost_price' =>
+                            $product->cost_price,
                     ]);
 
                     // ------------------------------------------------
