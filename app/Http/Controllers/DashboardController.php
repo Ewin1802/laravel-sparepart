@@ -68,7 +68,34 @@ class DashboardController extends Controller
             ')
             ->first();
 
+        // laba kotor per nota (total − pajak − modal), dihitung SEBANDING
+        // dengan uang yang sudah dibayar: Cash/Transfer = 100%, Tempo =
+        // paid_amount ÷ total. Sisanya = laba yang masih di piutang.
+        $realized = DB::table('orders')
+            ->leftJoinSub(
+                DB::table('order_items')
+                    ->selectRaw('order_id, SUM(quantity * COALESCE(cost_price, 0)) AS cogs')
+                    ->groupBy('order_id'),
+                'c',
+                'c.order_id',
+                '=',
+                'orders.id'
+            )
+            ->whereRaw(str_replace('transaction_time', 'orders.transaction_time', $orderWhere))
+            ->selectRaw("
+                COALESCE(SUM(
+                    (orders.total - orders.tax - COALESCE(c.cogs, 0)) *
+                    CASE
+                        WHEN LOWER(orders.payment_method) <> 'tempo' OR orders.payment_status = 'paid' THEN 1
+                        WHEN orders.total > 0 THEN LEAST(orders.paid_amount, orders.total) / orders.total
+                        ELSE 0
+                    END
+                ), 0) AS gross_realized
+            ")
+            ->value('gross_realized');
+
         return [
+            'gross_realized' => (float) $realized,
             'tempo' => $tempo,
             'paid_now' => $paidNow,
             'tempo_received' => $tempoReceived,
@@ -181,6 +208,10 @@ class DashboardController extends Controller
         $todayNetIncome =
             $todayRevenue - $todayCogs - $todayTax - $todayExpense;
 
+        // bagian laba yang sudah jadi uang vs masih di piutang
+        $todayProfitPending = ($todayRevenue - $todayCogs - $todayTax) - $todayMoney['gross_realized'];
+        $todayProfitReceived = $todayNetIncome - $todayProfitPending;
+
 
         /*
         |--------------------------------------------------------------------------
@@ -283,6 +314,10 @@ class DashboardController extends Controller
         // Laba = penjualan − modal barang − pajak − pengeluaran
         $monthNetIncome =
             $monthRevenue - $monthCogs - $monthTax - $monthExpense;
+
+        // bagian laba yang sudah jadi uang vs masih di piutang
+        $monthProfitPending = ($monthRevenue - $monthCogs - $monthTax) - $monthMoney['gross_realized'];
+        $monthProfitReceived = $monthNetIncome - $monthProfitPending;
 
         /*
         |--------------------------------------------------------------------------
@@ -972,6 +1007,8 @@ class DashboardController extends Controller
                 'todayCashIn',
                 'todayTempoReceived',
                 'todayCogs',
+                'todayProfitPending',
+                'todayProfitReceived',
 
                 // Bulan Ini
                 'monthRevenue',
@@ -986,6 +1023,8 @@ class DashboardController extends Controller
                 'monthTempoReceived',
                 'monthCogs',
                 'monthNoCost',
+                'monthProfitPending',
+                'monthProfitReceived',
                 'receivableOutstanding',
                 'receivableNotes',
 

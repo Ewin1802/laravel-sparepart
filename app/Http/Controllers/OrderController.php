@@ -276,6 +276,36 @@ class OrderController extends Controller
         $summary['no_cost'] = (int) ($cost->no_cost ?? 0);
         $summary['gross_profit'] = $summary['total_revenue'] - $summary['cogs'] - $summary['total_tax'];
 
+        // laba kotor yang sudah jadi uang (Tempo dihitung sebanding
+        // dengan yang sudah dibayar); sisanya masih di piutang
+        $summary['gross_realized'] = (float) DB::table('orders')
+            ->leftJoinSub(
+                DB::table('order_items')
+                    ->selectRaw('order_id, SUM(quantity * COALESCE(cost_price, 0)) AS cogs')
+                    ->groupBy('order_id'),
+                'c',
+                'c.order_id',
+                '=',
+                'orders.id'
+            )
+            ->whereRaw(
+                "STR_TO_DATE(orders.transaction_time, '%Y-%m-%dT%H:%i:%s') BETWEEN ? AND ?",
+                [$start, $end]
+            )
+            ->selectRaw("
+                COALESCE(SUM(
+                    (orders.total - orders.tax - COALESCE(c.cogs, 0)) *
+                    CASE
+                        WHEN LOWER(orders.payment_method) <> 'tempo' OR orders.payment_status = 'paid' THEN 1
+                        WHEN orders.total > 0 THEN LEAST(orders.paid_amount, orders.total) / orders.total
+                        ELSE 0
+                    END
+                ), 0) AS r
+            ")
+            ->value('r');
+
+        $summary['profit_pending'] = $summary['gross_profit'] - $summary['gross_realized'];
+
 
         /*
         |--------------------------------------------------------------------------

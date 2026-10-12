@@ -77,7 +77,8 @@
             <span class="metric-foot">
                 <i data-lucide="hand-coins"></i>
                 @if (Route::has('receivables.index'))
-                    <a href="{{ route('receivables.index') }}" style="color: inherit">{{ $num($receivableNotes ?? 0) }} nota tempo →</a>
+                    <a href="{{ route('receivables.index') }}"
+                        style="color: inherit">{{ $num($receivableNotes ?? 0) }} nota tempo →</a>
                 @else
                     {{ $num($receivableNotes ?? 0) }} nota tempo
                 @endif
@@ -86,16 +87,22 @@
 
         <div class="metric">
             <span class="metric-label">Modal &amp; Pengeluaran</span>
-            <strong class="metric-value">{{ $rp(($monthCogs ?? 0) + ($monthExpense ?? 0) + ($monthTax ?? 0)) }}</strong>
+            <strong
+                class="metric-value">{{ $rp(($monthCogs ?? 0) + ($monthExpense ?? 0) + ($monthTax ?? 0)) }}</strong>
             <span class="metric-foot">
                 <i data-lucide="trending-down"></i>
-                Modal {{ $rp($monthCogs ?? 0) }} · biaya {{ $rp($monthExpense ?? 0) }}{{ ($monthTax ?? 0) > 0 ? ' · pajak ' . $rp($monthTax) : '' }}
+                Modal {{ $rp($monthCogs ?? 0) }} · biaya
+                {{ $rp($monthExpense ?? 0) }}{{ ($monthTax ?? 0) > 0 ? ' · pajak ' . $rp($monthTax) : '' }}
             </span>
         </div>
 
         <div class="metric is-accent">
             <span class="metric-label">Laba Bersih</span>
             <strong class="metric-value">{{ $rp($monthNetIncome ?? 0) }}</strong>
+            <span class="metric-split">
+                <span>Sudah diterima <b>{{ $rp($monthProfitReceived ?? 0) }}</b></span>
+                <span>Masih di piutang <b class="is-pending">{{ $rp($monthProfitPending ?? 0) }}</b></span>
+            </span>
             <span class="metric-foot">
                 <i data-lucide="badge-dollar-sign"></i>
                 @if (($monthNoCost ?? 0) > 0)
@@ -111,10 +118,44 @@
 @once
     @push('css')
         <style>
-            .month-range { margin: 6px 0 0; font-size: 13px; color: #9aa3ae; line-height: 1.45; }
-            .month-range b { color: #e6e9ee; font-weight: 600; }
-            .today-range { font-size: 13px; color: #6b7380; }
-            .today-range b { color: #15171b; font-weight: 600; }
+            .metric-split {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                font-size: 12px;
+                color: #c9ced6;
+            }
+
+            .metric-split b {
+                color: #fff;
+                font-weight: 700;
+            }
+
+            .metric-split b.is-pending {
+                color: #FFB020;
+            }
+
+            .month-range {
+                margin: 6px 0 0;
+                font-size: 13px;
+                color: #9aa3ae;
+                line-height: 1.45;
+            }
+
+            .month-range b {
+                color: #e6e9ee;
+                font-weight: 600;
+            }
+
+            .today-range {
+                font-size: 13px;
+                color: #6b7380;
+            }
+
+            .today-range b {
+                color: #15171b;
+                font-weight: 600;
+            }
         </style>
     @endpush
 @endonce

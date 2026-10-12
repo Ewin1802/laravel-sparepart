@@ -122,6 +122,10 @@
                     <small>Laba Bersih</small>
                     <h3>{{ $rp($netProfit) }}</h3>
                     <span class="summary-sub">Laba kotor − pengeluaran {{ $rp($totalExpense ?? 0) }}</span>
+                    <span class="summary-sub">
+                        Sudah diterima <b>{{ $rp($netProfit - $summary['profit_pending']) }}</b><br>
+                        Masih di piutang <b style="color: #b7791f">{{ $rp($summary['profit_pending']) }}</b>
+                    </span>
                 </div>
             </div>
 

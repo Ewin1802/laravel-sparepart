@@ -4,8 +4,8 @@
 
     // komposisi penjualan HARI INI: cash / transfer / tempo
     $todaySales = (float) ($todayCash ?? 0) + (float) ($todayTransfer ?? 0) + (float) ($todayTempo ?? 0);
-    $tCash = $todaySales > 0 ? round(($todayCash ?? 0) / $todaySales * 100, 1) : 0;
-    $tTransfer = $todaySales > 0 ? round(($todayTransfer ?? 0) / $todaySales * 100, 1) : 0;
+    $tCash = $todaySales > 0 ? round((($todayCash ?? 0) / $todaySales) * 100, 1) : 0;
+    $tTransfer = $todaySales > 0 ? round((($todayTransfer ?? 0) / $todaySales) * 100, 1) : 0;
     $tTempo = $todaySales > 0 ? max(0, 100 - $tCash - $tTransfer) : 0;
     $expensePct = max(0, min(100, (float) ($expensePercent ?? 0)));
 @endphp
@@ -30,7 +30,8 @@
                 <div class="stat-number">{{ $rp($todayRevenue ?? 0) }}</div>
                 <div class="stat-desc">
                     <i data-lucide="trending-up"></i>
-                    {{ $num($todayOrders ?? 0) }} transaksi{{ ($todayTempo ?? 0) > 0 ? ' · tempo ' . $rp($todayTempo) : '' }}
+                    {{ $num($todayOrders ?? 0) }}
+                    transaksi{{ ($todayTempo ?? 0) > 0 ? ' · tempo ' . $rp($todayTempo) : '' }}
                 </div>
             </div>
         </div>
@@ -49,6 +50,10 @@
             <div class="stat-content">
                 <div class="stat-title">Laba Bersih</div>
                 <div class="stat-number">{{ $rp($todayNetIncome ?? 0) }}</div>
+                <div class="profit-split">
+                    <span>Sudah diterima <b>{{ $rp($todayProfitReceived ?? 0) }}</b></span>
+                    <span>Masih di piutang <b class="is-pending">{{ $rp($todayProfitPending ?? 0) }}</b></span>
+                </div>
                 <div class="stat-desc">Penjualan − modal {{ $rp($todayCogs ?? 0) }} − pajak − pengeluaran</div>
             </div>
         </div>
@@ -208,9 +213,34 @@
 @once
     @push('css')
         <style>
-            .pay-split .is-tempo { color: #b7791f; }
-            .split-bar .is-tempo { background: #FFB020; }
-            .dot.tempo { background: #FFB020; }
+            .profit-split {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                margin: 4px 0;
+                font-size: 12.5px;
+                color: #4a505a;
+            }
+
+            .profit-split b {
+                color: #15171b;
+            }
+
+            .profit-split b.is-pending {
+                color: #b7791f;
+            }
+
+            .pay-split .is-tempo {
+                color: #b7791f;
+            }
+
+            .split-bar .is-tempo {
+                background: #FFB020;
+            }
+
+            .dot.tempo {
+                background: #FFB020;
+            }
         </style>
     @endpush
 @endonce
