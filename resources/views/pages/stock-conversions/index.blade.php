@@ -11,15 +11,19 @@
                 ? number_format($v, 0, ',', '.')
                 : rtrim(rtrim(number_format($v, 2, ',', '.'), '0'), ',');
         };
-        $productData = $products->map(fn($p) => [
-            'id' => $p->id,
-            'name' => $p->name,
-            'code' => $p->code,
-            'unit' => $p->base_unit ?: 'PCS',
-            'stock' => (float) $p->stock,
-            'cost' => $p->cost_price !== null ? (float) $p->cost_price : null,
-            'active' => (bool) $p->status,
-        ])->values();
+        $productData = $products
+            ->map(
+                fn($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'code' => $p->code,
+                    'unit' => $p->base_unit ?: 'PCS',
+                    'stock' => (float) $p->stock,
+                    'cost' => $p->cost_price !== null ? (float) $p->cost_price : null,
+                    'active' => (bool) $p->status,
+                ],
+            )
+            ->values();
         $old = [
             'source' => old('source_product_id', request('source')),
             'target' => old('target_product_id'),
@@ -133,14 +137,16 @@
                                     <option value="">— pilih produk —</option>
                                 </select>
                                 <small class="p-hint" id="targetInfo">
-                                    Belum ada produk ecerannya? <a href="{{ route('products.create') }}" class="p-link">Tambah produk</a>
+                                    Belum ada produk ecerannya? <a href="{{ route('products.create') }}"
+                                        class="p-link">Tambah produk</a>
                                     dengan satuan LITER / KG / METER dan stok awal 0.
                                 </small>
                             </div>
 
                             <div class="p-field p-span-2">
                                 <label for="note">Catatan</label>
-                                <input type="text" id="note" name="note" maxlength="255" value="{{ $old['note'] }}"
+                                <input type="text" id="note" name="note" maxlength="255"
+                                    value="{{ $old['note'] }}"
                                     placeholder="Opsional, mis. galon dibuka untuk eceran bengkel">
                             </div>
                         </div>
@@ -158,10 +164,22 @@
                         </div>
 
                         <dl class="p-sim" aria-live="polite">
-                            <div><dt>Stok kemasan</dt><dd id="simSource">–</dd></div>
-                            <div><dt>Stok eceran</dt><dd id="simTarget">–</dd></div>
-                            <div><dt>Harga beli eceran</dt><dd id="simCost">–</dd></div>
-                            <div class="is-total"><dt>Nilai modal dipindah</dt><dd id="simValue">Rp 0</dd></div>
+                            <div>
+                                <dt>Stok kemasan</dt>
+                                <dd id="simSource">–</dd>
+                            </div>
+                            <div>
+                                <dt>Stok eceran</dt>
+                                <dd id="simTarget">–</dd>
+                            </div>
+                            <div>
+                                <dt>Harga beli eceran</dt>
+                                <dd id="simCost">–</dd>
+                            </div>
+                            <div class="is-total">
+                                <dt>Nilai modal dipindah</dt>
+                                <dd id="simValue">Rp 0</dd>
+                            </div>
                         </dl>
 
                         <p class="p-send-note is-on" id="simNote">Pilih produk kemasan dan eceran.</p>
@@ -210,7 +228,8 @@
                                 </td>
                                 <td data-label="Eceran">
                                     <strong>+{{ $qty($c->target_qty) }} {{ $c->target->base_unit ?? '' }}</strong>
-                                    <small class="p-sub">{{ $c->target->name ?? 'Produk dihapus' }} · isi {{ $qty($c->ratio) }}</small>
+                                    <small class="p-sub">{{ $c->target->name ?? 'Produk dihapus' }} · isi
+                                        {{ $qty($c->ratio) }}</small>
                                     @if ($c->note)
                                         <small class="p-sub">{{ $c->note }}</small>
                                     @endif
@@ -223,7 +242,17 @@
                                         <span class="p-stock is-mid">Dibatalkan</span>
                                     @else
                                         <form method="POST" action="{{ route('stock-conversions.destroy', $c->id) }}"
-                                            onsubmit="return confirm('Batalkan buka kemasan ini? Stok kedua produk dikembalikan.')">
+                                            class="js-cv-revert"
+                                            data-time="{{ $c->created_at->translatedFormat('d M Y H:i') }}"
+                                            data-user="{{ $c->user->name ?? '-' }}"
+                                            data-source-id="{{ $c->source_product_id }}"
+                                            data-source-name="{{ $c->source->name ?? 'Produk dihapus' }}"
+                                            data-source-unit="{{ $c->source->base_unit ?? 'PCS' }}"
+                                            data-source-qty="{{ (float) $c->source_qty }}"
+                                            data-target-id="{{ $c->target_product_id }}"
+                                            data-target-name="{{ $c->target->name ?? 'Produk dihapus' }}"
+                                            data-target-unit="{{ $c->target->base_unit ?? '' }}"
+                                            data-target-qty="{{ (float) $c->target_qty }}">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="p-icon-btn is-danger" title="Batalkan">
@@ -253,18 +282,449 @@
         </section>
     </div>
 
+    {{-- ================= MODAL BATAL BUKA KEMASAN ================= --}}
+    <div class="cvx" id="cvRevertModal" hidden>
+        <div class="cvx-backdrop" data-cvx-close></div>
+        <div class="cvx-dialog" role="dialog" aria-modal="true" aria-labelledby="cvxTitle">
+            <div class="cvx-head">
+                <span class="cvx-icon"><i data-lucide="undo-2"></i></span>
+                <div class="cvx-head-text">
+                    <span class="cvx-eyebrow">Riwayat Buka Kemasan</span>
+                    <h3 id="cvxTitle">Batalkan buka kemasan?</h3>
+                    <p id="cvxMeta">–</p>
+                </div>
+                <button type="button" class="cvx-x" data-cvx-close aria-label="Tutup"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="cvx-body">
+                <p class="cvx-lead">Stok kedua produk dikembalikan seperti sebelum kemasan dibuka.</p>
+
+                <div class="cvx-flow">
+                    <div class="cvx-card is-up">
+                        <span class="cvx-tag"><i data-lucide="package"></i> Kemasan</span>
+                        <strong id="cvxSrcName">–</strong>
+                        <div class="cvx-move">
+                            <span id="cvxSrcFrom">–</span>
+                            <i data-lucide="arrow-right"></i>
+                            <b id="cvxSrcTo">–</b>
+                        </div>
+                        <em id="cvxSrcDelta">–</em>
+                    </div>
+                    <div class="cvx-card is-down">
+                        <span class="cvx-tag"><i data-lucide="droplet"></i> Eceran</span>
+                        <strong id="cvxTgtName">–</strong>
+                        <div class="cvx-move">
+                            <span id="cvxTgtFrom">–</span>
+                            <i data-lucide="arrow-right"></i>
+                            <b id="cvxTgtTo">–</b>
+                        </div>
+                        <em id="cvxTgtDelta">–</em>
+                    </div>
+                </div>
+
+                <div class="cvx-note" id="cvxNote">
+                    <i data-lucide="info"></i>
+                    <span>Catatan tetap tersimpan di riwayat dengan label <b>Dibatalkan</b>. Pembatalan tidak bisa
+                        diulang.</span>
+                </div>
+                <div class="cvx-note is-block" id="cvxBlock" hidden>
+                    <i data-lucide="octagon-alert"></i>
+                    <span id="cvxBlockText">–</span>
+                </div>
+            </div>
+
+            <div class="cvx-foot">
+                <button type="button" class="cvx-btn is-ghost" data-cvx-close>Kembali</button>
+                <button type="button" class="cvx-btn is-danger" id="cvxConfirm">
+                    <i data-lucide="undo-2"></i> Ya, batalkan
+                </button>
+            </div>
+        </div>
+    </div>
+
     <style>
-        .cv-filter { margin-bottom: 8px; }
-        .cv-unit-input { display: flex; align-items: stretch; }
-        .cv-unit-input input { flex: 1; min-width: 0; border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
-        .cv-unit-input span {
-            display: inline-flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 700;
-            border: 1px solid var(--p-stroke, #e5e7eb); border-left: 0; border-radius: 0 12px 12px 0;
-            background: var(--p-soft, #f4f5f7); color: #4b5563; white-space: nowrap;
+        .cv-filter {
+            margin-bottom: 8px;
         }
-        tr.cv-reverted td { opacity: .5; }
-        tr.cv-reverted td.cell-actions { opacity: 1; }
-        #simNote.is-warn { color: #b45309; }
+
+        .cv-unit-input {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .cv-unit-input input {
+            flex: 1;
+            min-width: 0;
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .cv-unit-input span {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid var(--p-stroke, #e5e7eb);
+            border-left: 0;
+            border-radius: 0 12px 12px 0;
+            background: var(--p-soft, #f4f5f7);
+            color: #4b5563;
+            white-space: nowrap;
+        }
+
+        tr.cv-reverted td {
+            opacity: .5;
+        }
+
+        tr.cv-reverted td.cell-actions {
+            opacity: 1;
+        }
+
+        #simNote.is-warn {
+            color: #b45309;
+        }
+
+        /* ---------- modal batal (premium) ---------- */
+        .cvx {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+        }
+
+        .cvx[hidden] {
+            display: none;
+        }
+
+        .cvx-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(8, 10, 13, .62);
+            backdrop-filter: blur(6px);
+            animation: cvxFade .2s ease;
+        }
+
+        .cvx-dialog {
+            position: relative;
+            width: 100%;
+            max-width: 540px;
+            background: #fff;
+            border-radius: 26px;
+            overflow: hidden;
+            box-shadow: 0 40px 90px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .04);
+            animation: cvxPop .26s cubic-bezier(.2, .9, .3, 1.15);
+        }
+
+        .cvx-head {
+            position: relative;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            padding: 24px 24px 22px;
+            background: radial-gradient(120% 140% at 100% 0%, rgba(255, 106, 26, .28), transparent 55%), linear-gradient(135deg, #0c0e11, #1b1f26);
+            color: #fff;
+        }
+
+        .cvx-icon {
+            flex: none;
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #ff6a1a, #ffae1f);
+            box-shadow: 0 10px 24px rgba(255, 106, 26, .45);
+        }
+
+        .cvx-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #fff;
+        }
+
+        .cvx-head-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cvx-eyebrow {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: #ffae1f;
+        }
+
+        .cvx-head h3 {
+            margin: 4px 0 4px;
+            font-size: 21px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.2;
+        }
+
+        .cvx-head p {
+            margin: 0;
+            font-size: 13px;
+            color: #9aa3ae;
+        }
+
+        .cvx-x {
+            flex: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .12);
+            background: rgba(255, 255, 255, .06);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .cvx-x:hover {
+            background: rgba(255, 255, 255, .14);
+        }
+
+        .cvx-x svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .cvx-body {
+            padding: 22px 24px 6px;
+        }
+
+        .cvx-lead {
+            margin: 0 0 16px;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
+        .cvx-flow {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .cvx-card {
+            border-radius: 18px;
+            padding: 14px 16px;
+            border: 1px solid #e5e7eb;
+            background: #f8f9fb;
+            min-width: 0;
+        }
+
+        .cvx-card.is-up {
+            background: linear-gradient(180deg, #ecfdf3, #fff);
+            border-color: #a7f0c1;
+        }
+
+        .cvx-card.is-down {
+            background: linear-gradient(180deg, #fff4ec, #fff);
+            border-color: #ffc9a6;
+        }
+
+        .cvx-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #6b7380;
+        }
+
+        .cvx-tag svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .cvx-card strong {
+            display: block;
+            margin: 6px 0 10px;
+            font-size: 14px;
+            color: #0c0e11;
+            line-height: 1.35;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .cvx-move {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #6b7380;
+            flex-wrap: wrap;
+        }
+
+        .cvx-move svg {
+            width: 15px;
+            height: 15px;
+            color: #9aa3ae;
+        }
+
+        .cvx-move b {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0c0e11;
+        }
+
+        .cvx-card em {
+            display: inline-block;
+            margin-top: 8px;
+            font-style: normal;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+
+        .cvx-card.is-up em {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .cvx-card.is-down em {
+            background: #ffe4d2;
+            color: #c2410c;
+        }
+
+        .cvx-note {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin: 16px 0 0;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #f4f5f7;
+            color: #4b5563;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .cvx-note svg {
+            flex: none;
+            width: 17px;
+            height: 17px;
+            margin-top: 1px;
+            color: #6b7380;
+        }
+
+        .cvx-note[hidden] {
+            display: none;
+        }
+
+        .cvx-note.is-block {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .cvx-note.is-block svg {
+            color: #dc2626;
+        }
+
+        .cvx-foot {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 18px 24px 22px;
+        }
+
+        .cvx-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 46px;
+            padding: 0 20px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: .15s;
+        }
+
+        .cvx-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .cvx-btn.is-ghost {
+            background: #fff;
+            border-color: #e5e7eb;
+            color: #0c0e11;
+        }
+
+        .cvx-btn.is-ghost:hover {
+            background: #f4f5f7;
+        }
+
+        .cvx-btn.is-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(220, 38, 38, .32);
+        }
+
+        .cvx-btn.is-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 26px rgba(220, 38, 38, .38);
+        }
+
+        .cvx-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        @keyframes cvxFade {
+            from {
+                opacity: 0;
+            }
+        }
+
+        @keyframes cvxPop {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(.96);
+            }
+        }
+
+        @media (max-width: 560px) {
+            .cvx {
+                align-items: end;
+                padding: 0;
+            }
+
+            .cvx-dialog {
+                border-radius: 24px 24px 0 0;
+                max-width: none;
+            }
+
+            .cvx-flow {
+                grid-template-columns: 1fr;
+            }
+
+            .cvx-foot {
+                flex-direction: column-reverse;
+            }
+
+            .cvx-btn {
+                width: 100%;
+            }
+        }
     </style>
 @endsection
 
@@ -277,18 +737,24 @@
             const byId = new Map(PRODUCTS.map((p) => [String(p.id), p]));
 
             const $ = (id) => document.getElementById(id);
-            const src = $('source_product_id'), tgt = $('target_product_id');
-            const qty = $('source_qty'), ratio = $('ratio');
+            const src = $('source_product_id'),
+                tgt = $('target_product_id');
+            const qty = $('source_qty'),
+                ratio = $('ratio');
 
             const MEASURE = ['LITER', 'LTR', 'L', 'ML', 'METER', 'M', 'CM', 'KG', 'KILO', 'GR', 'GRAM', 'ONS'];
-            const num = (n) => (Number(n) || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+            const num = (n) => (Number(n) || 0).toLocaleString('id-ID', {
+                maximumFractionDigits: 2
+            });
             const rp = (n) => 'Rp ' + Math.round(Number(n) || 0).toLocaleString('id-ID');
 
             const fill = (select, filter = '', keep = select.value, preferMeasure = false) => {
                 const f = filter.trim().toLowerCase();
-                const list = PRODUCTS.filter((p) => !f || p.name.toLowerCase().includes(f) || (p.code || '').toLowerCase().includes(f));
+                const list = PRODUCTS.filter((p) => !f || p.name.toLowerCase().includes(f) || (p.code || '')
+                    .toLowerCase().includes(f));
                 // produk eceran: satuan ukuran ditaruh di atas
-                if (preferMeasure) list.sort((a, b) => (MEASURE.includes(b.unit) - MEASURE.includes(a.unit)) || a.name.localeCompare(b.name));
+                if (preferMeasure) list.sort((a, b) => (MEASURE.includes(b.unit) - MEASURE.includes(a.unit)) || a
+                    .name.localeCompare(b.name));
                 select.innerHTML = '<option value="">— pilih produk —</option>' + list.map((p) =>
                     `<option value="${p.id}">${p.name.replace(/</g, '&lt;')} · ${num(p.stock)} ${p.unit}${p.active ? '' : ' (nonaktif)'}</option>`
                 ).join('');
@@ -304,13 +770,15 @@
             });
 
             const update = () => {
-                const s = byId.get(src.value), t = byId.get(tgt.value);
-                const q = Number(qty.value) || 0, r = Number(ratio.value) || 0;
+                const s = byId.get(src.value),
+                    t = byId.get(tgt.value);
+                const q = Number(qty.value) || 0,
+                    r = Number(ratio.value) || 0;
                 $('sourceUnit').textContent = s ? s.unit : 'PCS';
                 $('ratioUnit').textContent = t ? t.unit : 'eceran';
-                $('sourceInfo').textContent = s
-                    ? `Stok ${num(s.stock)} ${s.unit} · harga beli ${s.cost ? rp(s.cost) : 'belum ada'}`
-                    : '';
+                $('sourceInfo').textContent = s ?
+                    `Stok ${num(s.stock)} ${s.unit} · harga beli ${s.cost ? rp(s.cost) : 'belum ada'}` :
+                    '';
 
                 const note = $('simNote');
                 note.classList.remove('is-warn');
@@ -328,13 +796,17 @@
                 $('simValue').textContent = rp((s.cost || 0) * q);
 
                 if (s.id === t.id) {
-                    note.textContent = 'Produk eceran harus berbeda dari produk kemasan.'; note.classList.add('is-warn');
+                    note.textContent = 'Produk eceran harus berbeda dari produk kemasan.';
+                    note.classList.add('is-warn');
                 } else if (q > s.stock) {
-                    note.textContent = `Stok ${s.name} hanya ${num(s.stock)} ${s.unit}.`; note.classList.add('is-warn');
+                    note.textContent = `Stok ${s.name} hanya ${num(s.stock)} ${s.unit}.`;
+                    note.classList.add('is-warn');
                 } else if (!MEASURE.includes(t.unit)) {
-                    note.textContent = `Perhatian: satuan produk eceran ${t.unit}. Biasanya LITER / KG / METER.`; note.classList.add('is-warn');
+                    note.textContent = `Perhatian: satuan produk eceran ${t.unit}. Biasanya LITER / KG / METER.`;
+                    note.classList.add('is-warn');
                 } else if (!s.cost) {
-                    note.textContent = 'Produk kemasan belum punya harga beli — harga beli eceran tidak diubah.'; note.classList.add('is-warn');
+                    note.textContent = 'Produk kemasan belum punya harga beli — harga beli eceran tidak diubah.';
+                    note.classList.add('is-warn');
                 } else {
                     note.textContent = `${num(q)} ${s.unit} dibuka → +${num(add)} ${t.unit} ${t.name}.`;
                 }
@@ -343,7 +815,10 @@
             src.addEventListener('change', () => {
                 const pair = PAIRS[src.value];
                 if (pair) {
-                    if (!tgt.value) { fill(tgt, '', String(pair.target), true); tgt.value = String(pair.target); }
+                    if (!tgt.value) {
+                        fill(tgt, '', String(pair.target), true);
+                        tgt.value = String(pair.target);
+                    }
                     if (!ratio.value) ratio.value = pair.ratio;
                 }
                 update();
@@ -355,6 +830,71 @@
             fill(tgt, '', OLD.target ? String(OLD.target) : '', true);
             if (src.value && !OLD.ratio) src.dispatchEvent(new Event('change'));
             update();
+
+            /* ---------- modal batal buka kemasan ---------- */
+            const modal = $('cvRevertModal');
+            const okBtn = $('cvxConfirm');
+            let pending = null;
+
+            const closeModal = () => {
+                modal.hidden = true;
+                document.body.style.overflow = '';
+                pending = null;
+            };
+            modal.querySelectorAll('[data-cvx-close]').forEach((el) => el.addEventListener('click', closeModal));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.hidden) closeModal();
+            });
+
+            document.querySelectorAll('form.js-cv-revert').forEach((form) => {
+                form.addEventListener('submit', (e) => {
+                    if (form.dataset.ok === '1') return; // sudah dikonfirmasi
+                    e.preventDefault();
+                    const d = form.dataset;
+                    const sq = Number(d.sourceQty) || 0,
+                        tq = Number(d.targetQty) || 0;
+                    const s = byId.get(String(d.sourceId)),
+                        t = byId.get(String(d.targetId));
+                    const sNow = s ? Number(s.stock) : null,
+                        tNow = t ? Number(t.stock) : null;
+
+                    $('cvxMeta').textContent = `${d.time} · oleh ${d.user}`;
+                    $('cvxSrcName').textContent = d.sourceName;
+                    $('cvxTgtName').textContent = d.targetName;
+                    $('cvxSrcFrom').textContent = sNow === null ? '–' : `${num(sNow)} ${d.sourceUnit}`;
+                    $('cvxSrcTo').textContent = sNow === null ? '–' :
+                        `${num(sNow + sq)} ${d.sourceUnit}`;
+                    $('cvxTgtFrom').textContent = tNow === null ? '–' : `${num(tNow)} ${d.targetUnit}`;
+                    $('cvxTgtTo').textContent = tNow === null ? '–' :
+                        `${num(Math.max(0, tNow - tq))} ${d.targetUnit}`;
+                    $('cvxSrcDelta').textContent = `+${num(sq)} ${d.sourceUnit} kembali`;
+                    $('cvxTgtDelta').textContent = `−${num(tq)} ${d.targetUnit} ditarik`;
+
+                    const blocked = tNow !== null && tNow + 0.0001 < tq;
+                    $('cvxBlock').hidden = !blocked;
+                    $('cvxNote').hidden = blocked;
+                    $('cvxBlockText').textContent = blocked ?
+                        `Tidak bisa dibatalkan: stok ${d.targetName} tinggal ${num(tNow)} ${d.targetUnit}, sebagian dari ${num(tq)} ${d.targetUnit} sudah terjual. Koreksi stok lewat Edit Produk bila perlu.` :
+                        '';
+                    okBtn.disabled = blocked;
+
+                    pending = form;
+                    modal.hidden = false;
+                    document.body.style.overflow = 'hidden';
+                    window.refreshIcons?.();
+                    (blocked ? modal.querySelector('.cvx-btn.is-ghost') : okBtn).focus();
+                });
+            });
+
+            okBtn.addEventListener('click', () => {
+                if (!pending) return;
+                const form = pending;
+                form.dataset.ok = '1';
+                okBtn.disabled = true;
+                okBtn.innerHTML = 'Membatalkan…';
+                window.showLoading?.();
+                form.submit();
+            });
         })();
     </script>
 @endpush
