@@ -232,6 +232,53 @@ class OrderController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | UANG MASUK, PIUTANG & MODAL (periode ini)
+        |--------------------------------------------------------------------------
+        |
+        | - tempo_received : DP & cicilan Tempo yang DITERIMA di periode ini
+        | - cash_in        : uang yang benar-benar masuk (cash + transfer +
+        |                    DP/cicilan tempo)
+        | - tempo_unpaid   : sisa tagihan nota Tempo periode ini yang belum
+        |                    dibayar
+        | - cogs           : modal barang terjual (qty × harga beli per baris)
+        | - gross_profit   : penjualan − modal − pajak
+        */
+
+        $tempoReceived = (float) DB::table('order_payments')
+            ->whereBetween('paid_at', [
+                $startCarbon->copy()->startOfDay(),
+                $endCarbon->copy()->endOfDay(),
+            ])
+            ->sum('amount');
+
+        $summary['tempo_received'] = $tempoReceived;
+        $summary['cash_in'] = $summary['total_cash'] + $summary['total_transfer'] + $tempoReceived;
+
+        $summary['tempo_unpaid'] = (float) (clone $query)
+            ->whereRaw('LOWER(payment_method) = ?', ['tempo'])
+            ->where('payment_status', '!=', 'paid')
+            ->selectRaw('COALESCE(SUM(total - paid_amount), 0) AS s')
+            ->value('s');
+
+        $cost = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->whereRaw(
+                "STR_TO_DATE(orders.transaction_time, '%Y-%m-%dT%H:%i:%s') BETWEEN ? AND ?",
+                [$start, $end]
+            )
+            ->selectRaw('
+                COALESCE(SUM(order_items.quantity * COALESCE(order_items.cost_price, 0)), 0) AS cogs,
+                COALESCE(SUM(CASE WHEN order_items.cost_price IS NULL OR order_items.cost_price <= 0 THEN 1 ELSE 0 END), 0) AS no_cost
+            ')
+            ->first();
+
+        $summary['cogs'] = (float) ($cost->cogs ?? 0);
+        $summary['no_cost'] = (int) ($cost->no_cost ?? 0);
+        $summary['gross_profit'] = $summary['total_revenue'] - $summary['cogs'] - $summary['total_tax'];
+
+
+        /*
+        |--------------------------------------------------------------------------
         | EXPENSE QUERY
         |--------------------------------------------------------------------------
         */
