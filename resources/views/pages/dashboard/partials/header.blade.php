@@ -36,6 +36,11 @@
         <div>
             <span class="dash-eyebrow">Bulan ini</span>
             <h2>{{ now()->translatedFormat('F Y') }}</h2>
+            <p class="month-range">
+                Dihitung dari transaksi tanggal
+                <b>{{ now()->startOfMonth()->translatedFormat('d F Y') }}</b> s/d
+                <b>{{ now()->translatedFormat('d F Y') }}</b> (hari ini)
+            </p>
         </div>
         <span class="month-chip">
             <i data-lucide="receipt-text"></i>
@@ -102,3 +107,14 @@
         </div>
     </div>
 </section>
+
+@once
+    @push('css')
+        <style>
+            .month-range { margin: 6px 0 0; font-size: 13px; color: #9aa3ae; line-height: 1.45; }
+            .month-range b { color: #e6e9ee; font-weight: 600; }
+            .today-range { font-size: 13px; color: #6b7380; }
+            .today-range b { color: #15171b; font-weight: 600; }
+        </style>
+    @endpush
+@endonce

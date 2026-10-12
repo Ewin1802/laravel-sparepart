@@ -74,6 +74,20 @@
         {{-- =========================================================
              RINGKASAN
         ========================================================== --}}
+        @php
+            $periodFrom = \Carbon\Carbon::parse($start_date)->translatedFormat('d F Y');
+            $periodTo = \Carbon\Carbon::parse($end_date)->translatedFormat('d F Y');
+            $netProfit = $summary['gross_profit'] - (float) ($totalExpense ?? 0);
+        @endphp
+
+        <div class="period-note">
+            <i data-lucide="calendar-range"></i>
+            <span>
+                Periode <b>{{ $periodFrom }}</b> s/d <b>{{ $periodTo }}</b>
+                · dihitung dari <b>tanggal transaksi</b> (DP/cicilan tempo dari tanggal uang diterima)
+            </span>
+        </div>
+
         <div class="summary-grid">
             <div class="summary-card is-highlight">
                 <span class="summary-icon orange"><i data-lucide="wallet"></i></span>
@@ -103,6 +117,15 @@
             </div>
 
             <div class="summary-card">
+                <span class="summary-icon green"><i data-lucide="badge-dollar-sign"></i></span>
+                <div class="summary-content">
+                    <small>Laba Bersih</small>
+                    <h3>{{ $rp($netProfit) }}</h3>
+                    <span class="summary-sub">Laba kotor − pengeluaran {{ $rp($totalExpense ?? 0) }}</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
                 <span class="summary-icon slate"><i data-lucide="piggy-bank"></i></span>
                 <div class="summary-content">
                     <small>Laba Kotor</small>
@@ -111,8 +134,8 @@
                         @if ($summary['no_cost'] > 0)
                             {{ $num($summary['no_cost']) }} item belum ada harga beli
                         @else
-                            Modal
-                            {{ $rp($summary['cogs']) }}{{ $summary['total_tax'] > 0 ? ' · pajak ' . $rp($summary['total_tax']) : '' }}
+                            Penjualan − modal
+                            {{ $rp($summary['cogs']) }}{{ $summary['total_tax'] > 0 ? ' − pajak ' . $rp($summary['total_tax']) : '' }}
                         @endif
                     </span>
                 </div>
@@ -139,14 +162,7 @@
                 <div class="summary-content">
                     <small>Jumlah Transaksi</small>
                     <h3>{{ $num($summary['total_order']) }}</h3>
-                </div>
-            </div>
-
-            <div class="summary-card">
-                <span class="summary-icon yellow"><i data-lucide="package"></i></span>
-                <div class="summary-content">
-                    <small>Part Terjual</small>
-                    <h3>{{ $num($summary['total_item']) }}</h3>
+                    <span class="summary-sub">{{ $num($summary['total_item']) }} part terjual</span>
                 </div>
             </div>
         </div>
@@ -790,6 +806,28 @@
             })();
         </script>
         <style>
+            .period-note {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                margin: 0 0 14px;
+                padding: 12px 16px;
+                border-radius: 14px;
+                background: #fff7ef;
+                border: 1px solid #ffd9bf;
+                color: #7a3a10;
+                font-size: 13.5px;
+                line-height: 1.5;
+            }
+
+            .period-note svg {
+                flex: none;
+                width: 18px;
+                height: 18px;
+                margin-top: 1px;
+                color: #e2550a;
+            }
+
             .summary-sub {
                 display: block;
                 margin-top: 4px;

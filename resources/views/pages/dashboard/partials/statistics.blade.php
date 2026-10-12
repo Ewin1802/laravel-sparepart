@@ -16,7 +16,10 @@
 <section aria-labelledby="today-title">
     <div class="section-title">
         <h2 id="today-title">Hari ini</h2>
-        <span>{{ $num($todayOrders ?? 0) }} transaksi</span>
+        <span class="today-range">
+            Transaksi tanggal <b>{{ now()->translatedFormat('d F Y') }}</b> (00.00–23.59)
+            · {{ $num($todayOrders ?? 0) }} transaksi
+        </span>
     </div>
 
     <div class="dashboard-grid">
