@@ -46,6 +46,14 @@
         <div class="p-card">
 
             {{-- PENCARIAN --}}
+            <style>
+                .nocost-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #fcd34d; background: #fff8eb; color: #92400e; font-weight: 700; white-space: nowrap; }
+                .nocost-chip svg { width: 16px; height: 16px; }
+                .nocost-chip .nocost-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #f59e0b; color: #fff; font-size: 12px; text-align: center; }
+                .nocost-chip.is-on { background: #92400e; border-color: #92400e; color: #fff; }
+                .nocost-chip.is-on .nocost-count { background: #fff; color: #92400e; }
+            </style>
+
             @if (request()->boolean('no_cost'))
                 <div class="p-notice is-warning" role="status" style="margin: 0 0 14px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 14px; background: #fff8eb; border: 1px solid #fcd34d; color: #92400e; font-size: 14px; line-height: 1.5">
                     <i data-lucide="triangle-alert" style="flex: none; width: 18px; height: 18px; margin-top: 2px"></i>
@@ -69,6 +77,18 @@
                 </label>
 
                 <button type="submit" class="p-btn p-btn-dark">Cari</button>
+
+                {{-- tombol cepat: tampilkan / sembunyikan produk tanpa harga beli --}}
+                @php $noCostOn = request()->boolean('no_cost'); @endphp
+                <a href="{{ $noCostOn
+                        ? route('products.index', array_filter(['name' => $search]))
+                        : route('products.index', array_filter(['name' => $search, 'no_cost' => 1])) }}"
+                    class="p-btn nocost-chip {{ $noCostOn ? 'is-on' : '' }}"
+                    title="Produk berstok yang belum punya harga beli">
+                    <i data-lucide="{{ $noCostOn ? 'x' : 'circle-dollar-sign' }}"></i>
+                    Tanpa harga beli
+                    <span class="nocost-count">{{ number_format($noCostCount ?? 0, 0, ',', '.') }}</span>
+                </a>
 
                 @if ($search || request()->boolean('no_cost'))
                     <a href="{{ route('products.index') }}" class="p-btn p-btn-ghost">Reset</a>

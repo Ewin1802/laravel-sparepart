@@ -41,7 +41,15 @@ class ProductController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('pages.products.index', compact('products'));
+        // jumlah produk berstok tanpa harga beli → angka di tombol filter
+        $noCostCount = DB::table('products')
+            ->where('stock', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('cost_price')->orWhere('cost_price', '<=', 0);
+            })
+            ->count();
+
+        return view('pages.products.index', compact('products', 'noCostCount'));
     }
 
     /**
