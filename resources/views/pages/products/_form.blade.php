@@ -20,7 +20,7 @@
         'KG' => 'KG — kiloan',
     ];
     $currentUnit = old('base_unit', $p->base_unit ?? 'PCS');
-    if ($currentUnit && !array_key_exists($currentUnit, $units)) {
+    if ($currentUnit && ! array_key_exists($currentUnit, $units)) {
         $units = [$currentUnit => $currentUnit] + $units;
     }
 
@@ -109,10 +109,10 @@
 
                 <div class="p-field p-span-2">
                     <label for="description">Deskripsi <span class="req">*</span></label>
-                    <textarea id="description" name="description" rows="5" required class="@error('description') is-invalid @enderror"
+                    <textarea id="description" name="description" rows="5" required
+                        class="@error('description') is-invalid @enderror"
                         placeholder="Merek, kode part, dan cocok untuk kendaraan apa. Contoh: Merek AHM, kode 06455-KVB-901, cocok untuk Beat, Vario 125, Scoopy.">{{ old('description', $p->description ?? '') }}</textarea>
-                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di
-                        website.</small>
+                    <small class="p-hint">Tulis merek, kode part, dan tipe kendaraan — pembeli bisa mencarinya di website.</small>
                     @error('description')
                         <small class="p-error">{{ $message }}</small>
                     @enderror
@@ -148,17 +148,34 @@
                     @enderror
                 </div>
 
+                <div class="p-field p-span-2">
+                    <label for="cost_price_display">Harga Beli <small style="font-weight: 400; color: #6b7380">(modal, opsional)</small></label>
+                    <div class="p-money">
+                        <span>Rp</span>
+                        <input type="text" id="cost_price_display" inputmode="numeric" autocomplete="off"
+                            data-money="#cost_price"
+                            value="{{ old('cost_price', isset($p->cost_price) && $p->cost_price > 0 ? (int) $p->cost_price : '') }}"
+                            placeholder="0" class="@error('cost_price') is-invalid @enderror">
+                    </div>
+                    <input type="hidden" name="cost_price" id="cost_price"
+                        value="{{ old('cost_price', isset($p->cost_price) && $p->cost_price > 0 ? (int) $p->cost_price : '') }}">
+                    <small class="p-hint">
+                        Terisi otomatis dari <b>Stok Masuk</b>. Isi manual hanya untuk barang lama yang sudah ada di rak
+                        — supaya modal &amp; laba terhitung. Kosongkan bila tidak tahu.
+                    </small>
+                    @error('cost_price')
+                        <small class="p-error">{{ $message }}</small>
+                    @enderror
+                </div>
+
                 <div class="p-field">
                     <label for="stock">{{ $isEdit ? 'Stok' : 'Stok Awal' }} <span class="req">*</span></label>
-                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0"
-                        step="any" inputmode="decimal" required class="@error('stock') is-invalid @enderror">
+                    <input type="number" id="stock" name="stock" value="{{ $stockValue }}" min="0" step="any"
+                        inputmode="decimal" required class="@error('stock') is-invalid @enderror">
                     @if ($isEdit)
-                        <small class="p-hint">Ubah hanya untuk koreksi hasil hitung fisik. Barang datang dari supplier
-                            dicatat lewat <b>Stok Masuk</b>.</small>
+                        <small class="p-hint">Ubah hanya untuk koreksi hasil hitung fisik. Barang datang dari supplier dicatat lewat <b>Stok Masuk</b>.</small>
                     @else
-                        <small class="p-hint">Isi <b>0</b> untuk barang yang baru dibeli — catat lewat <b>Stok
-                                Masuk</b> supaya stok tidak dobel. Isi angka hanya untuk barang lama yang sudah ada di
-                            rak.</small>
+                        <small class="p-hint">Isi <b>0</b> untuk barang yang baru dibeli — catat lewat <b>Stok Masuk</b> supaya stok tidak dobel. Isi angka hanya untuk barang lama yang sudah ada di rak.</small>
                     @endif
                     @error('stock')
                         <small class="p-error">{{ $message }}</small>
@@ -167,11 +184,9 @@
 
                 <div class="p-field">
                     <label for="base_unit">Satuan <span class="req">*</span></label>
-                    <select id="base_unit" name="base_unit" required
-                        class="@error('base_unit') is-invalid @enderror">
+                    <select id="base_unit" name="base_unit" required class="@error('base_unit') is-invalid @enderror">
                         @foreach ($units as $value => $label)
-                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}
-                            </option>
+                            <option value="{{ $value }}" @selected($currentUnit === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('base_unit')
@@ -236,8 +251,7 @@
                 </div>
 
                 @if (Route::has('products.labels'))
-                    <a href="{{ route('products.labels', ['qty' => [$p->id => 1]]) }}"
-                        class="p-btn p-btn-ghost p-btn-block">
+                    <a href="{{ route('products.labels', ['qty' => [$p->id => 1]]) }}" class="p-btn p-btn-ghost p-btn-block">
                         <i data-lucide="printer"></i>
                         Cetak Label
                     </a>
@@ -296,38 +310,11 @@
 
 
 <style>
-    .crud-page .p-mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        letter-spacing: .3px;
-    }
-
-    .crud-page .p-barcode-preview {
-        display: grid;
-        justify-items: center;
-        gap: 6px;
-        padding: 14px;
-        margin-bottom: 12px;
-        border: 1px solid var(--pb, #e5e7eb);
-        border-radius: 12px;
-        background: #fff;
-    }
-
-    .crud-page .p-barcode-preview svg {
-        width: 100%;
-        max-width: 260px;
-        height: 64px;
-    }
-
-    .crud-page .p-barcode-preview span {
-        font-family: ui-monospace, Menlo, Consolas, monospace;
-        font-size: 13px;
-        letter-spacing: 1px;
-    }
-
-    .crud-page .p-btn-block {
-        width: 100%;
-        justify-content: center;
-    }
+    .crud-page .p-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .3px; }
+    .crud-page .p-barcode-preview { display: grid; justify-items: center; gap: 6px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--pb, #e5e7eb); border-radius: 12px; background: #fff; }
+    .crud-page .p-barcode-preview svg { width: 100%; max-width: 260px; height: 64px; }
+    .crud-page .p-barcode-preview span { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; letter-spacing: 1px; }
+    .crud-page .p-btn-block { width: 100%; justify-content: center; }
 </style>
 
 <script>
@@ -337,8 +324,7 @@
         input.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter') return;
             e.preventDefault();
-            const fields = [...input.form.querySelectorAll(
-                'input:not([type=hidden]), select, textarea')];
+            const fields = [...input.form.querySelectorAll('input:not([type=hidden]), select, textarea')];
             fields[fields.indexOf(input) + 1]?.focus();
         });
     });

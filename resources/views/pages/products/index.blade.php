@@ -46,7 +46,21 @@
         <div class="p-card">
 
             {{-- PENCARIAN --}}
+            @if (request()->boolean('no_cost'))
+                <div class="p-notice is-warning" role="status" style="margin: 0 0 14px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 14px; background: #fff8eb; border: 1px solid #fcd34d; color: #92400e; font-size: 14px; line-height: 1.5">
+                    <i data-lucide="triangle-alert" style="flex: none; width: 18px; height: 18px; margin-top: 2px"></i>
+                    <span>
+                        Menampilkan <b>produk berstok yang belum punya harga beli</b> — modal &amp; laba barang ini belum terhitung.
+                        Tekan <b>Edit</b> lalu isi <b>Harga Beli</b> (untuk stok lama), atau catat lewat <b>Stok Masuk</b> saat barang datang.
+                        <a href="{{ route('products.index') }}" style="font-weight: 700">Tampilkan semua produk</a>
+                    </span>
+                </div>
+            @endif
+
             <form method="GET" action="{{ route('products.index') }}" class="p-toolbar" role="search">
+                @if (request()->boolean('no_cost'))
+                    <input type="hidden" name="no_cost" value="1">
+                @endif
                 <label class="p-search">
                     <i data-lucide="search"></i>
                     <input type="search" name="name" value="{{ $search }}"
@@ -56,7 +70,7 @@
 
                 <button type="submit" class="p-btn p-btn-dark">Cari</button>
 
-                @if ($search)
+                @if ($search || request()->boolean('no_cost'))
                     <a href="{{ route('products.index') }}" class="p-btn p-btn-ghost">Reset</a>
                 @endif
 

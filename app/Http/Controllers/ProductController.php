@@ -28,6 +28,15 @@ class ProductController extends Controller
                         ->orWhere('products.barcode', trim($name));
                 });
             })
+            // ?no_cost=1 → produk berstok yang belum punya harga beli
+            // (sama dengan angka "N produk belum ada harga beli" di dashboard)
+            ->when($request->boolean('no_cost'), function ($query) {
+                $query->where('products.stock', '>', 0)
+                    ->where(function ($q) {
+                        $q->whereNull('products.cost_price')
+                            ->orWhere('products.cost_price', '<=', 0);
+                    });
+            })
             ->orderByDesc('products.id')
             ->paginate(10)
             ->withQueryString();
@@ -56,6 +65,7 @@ class ProductController extends Controller
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
+            'cost_price'    => 'nullable|numeric|min:0',
             'category_id'   => 'required|exists:categories,id',
             'stock'         => 'required|numeric|min:0',
             'status'        => 'required|boolean',
@@ -70,6 +80,12 @@ class ProductController extends Controller
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
+
+        // harga beli: diisi manual hanya bila dikirim (kosong = tidak diubah).
+        // Normalnya terisi otomatis dari Stok Masuk / Buka Kemasan.
+        if ($request->filled('cost_price')) {
+            $product->cost_price = $request->cost_price;
+        }
         $product->category_id = $request->category_id;
         $product->stock = $request->stock;
         $product->status = $request->status;
@@ -131,6 +147,7 @@ class ProductController extends Controller
             'name'          => 'required|max:255',
             'description'   => 'required',
             'price'         => 'required|numeric|min:0',
+            'cost_price'    => 'nullable|numeric|min:0',
             'category_id'   => 'required|exists:categories,id',
             'stock'         => 'required|numeric|min:0',
             'status'        => 'required|boolean',
@@ -145,6 +162,12 @@ class ProductController extends Controller
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
+
+        // harga beli: diisi manual hanya bila dikirim (kosong = tidak diubah).
+        // Normalnya terisi otomatis dari Stok Masuk / Buka Kemasan.
+        if ($request->filled('cost_price')) {
+            $product->cost_price = $request->cost_price;
+        }
         $product->category_id = $request->category_id;
         $product->stock = $request->stock;
         $product->status = $request->status;

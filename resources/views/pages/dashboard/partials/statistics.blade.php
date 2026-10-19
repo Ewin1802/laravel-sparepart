@@ -4,8 +4,8 @@
 
     // komposisi penjualan HARI INI: cash / transfer / tempo
     $todaySales = (float) ($todayCash ?? 0) + (float) ($todayTransfer ?? 0) + (float) ($todayTempo ?? 0);
-    $tCash = $todaySales > 0 ? round((($todayCash ?? 0) / $todaySales) * 100, 1) : 0;
-    $tTransfer = $todaySales > 0 ? round((($todayTransfer ?? 0) / $todaySales) * 100, 1) : 0;
+    $tCash = $todaySales > 0 ? round(($todayCash ?? 0) / $todaySales * 100, 1) : 0;
+    $tTransfer = $todaySales > 0 ? round(($todayTransfer ?? 0) / $todaySales * 100, 1) : 0;
     $tTempo = $todaySales > 0 ? max(0, 100 - $tCash - $tTransfer) : 0;
     $expensePct = max(0, min(100, (float) ($expensePercent ?? 0)));
 @endphp
@@ -30,8 +30,7 @@
                 <div class="stat-number">{{ $rp($todayRevenue ?? 0) }}</div>
                 <div class="stat-desc">
                     <i data-lucide="trending-up"></i>
-                    {{ $num($todayOrders ?? 0) }}
-                    transaksi{{ ($todayTempo ?? 0) > 0 ? ' · tempo ' . $rp($todayTempo) : '' }}
+                    {{ $num($todayOrders ?? 0) }} transaksi{{ ($todayTempo ?? 0) > 0 ? ' · tempo ' . $rp($todayTempo) : '' }}
                 </div>
             </div>
         </div>
@@ -123,7 +122,9 @@
                 <div class="stat-number">{{ $rp($stockCost ?? 0) }}</div>
                 <div class="stat-desc">
                     @if (($stockNoCost ?? 0) > 0)
-                        {{ $num($stockNoCost) }} produk belum ada harga beli
+                        <a href="{{ route('products.index', ['no_cost' => 1]) }}" style="color: #c2410c; font-weight: 600; text-decoration: underline">
+                            {{ $num($stockNoCost) }} produk belum ada harga beli →
+                        </a>
                     @else
                         Potensi untung {{ $rp($stockMargin ?? 0) }}
                     @endif
@@ -213,34 +214,12 @@
 @once
     @push('css')
         <style>
-            .profit-split {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-                margin: 4px 0;
-                font-size: 12.5px;
-                color: #4a505a;
-            }
-
-            .profit-split b {
-                color: #15171b;
-            }
-
-            .profit-split b.is-pending {
-                color: #b7791f;
-            }
-
-            .pay-split .is-tempo {
-                color: #b7791f;
-            }
-
-            .split-bar .is-tempo {
-                background: #FFB020;
-            }
-
-            .dot.tempo {
-                background: #FFB020;
-            }
+            .profit-split { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; font-size: 12.5px; color: #4a505a; }
+            .profit-split b { color: #15171b; }
+            .profit-split b.is-pending { color: #b7791f; }
+            .pay-split .is-tempo { color: #b7791f; }
+            .split-bar .is-tempo { background: #FFB020; }
+            .dot.tempo { background: #FFB020; }
         </style>
     @endpush
 @endonce
